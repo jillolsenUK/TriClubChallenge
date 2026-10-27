@@ -124,7 +124,14 @@
         '<span class="km">' + km(t.distanceKm) + '</span></li>';
     }).join('');
     $('empty').hidden = state.teams.length > 0;
-    list.querySelectorAll('li').forEach((li) => li.addEventListener('click', () => selectTeam(li.dataset.key)));
+    list.querySelectorAll('li').forEach((li) =>
+      li.addEventListener('click', () => {
+        selectTeam(li.dataset.key);
+        // On phones the page scrolls: bring the top of the Team pane back into view.
+        const tabs = document.querySelector('.tabs');
+        if (tabs.getBoundingClientRect().top < 0 || window.scrollY > tabs.offsetTop) window.scrollTo({ top: tabs.offsetTop, behavior: 'smooth' });
+      }),
+    );
   }
 
   function renderTeamSelect() {

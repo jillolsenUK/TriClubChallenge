@@ -247,10 +247,19 @@ th { color: var(--muted); font-weight: 600; }
 .team-icon .xmas-badge { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); }
 .leaflet-tooltip.team-label { font-weight: 600; }
 
+/* Phones: the whole page scrolls (map on top, panel below at its full
+   height) instead of squeezing the panel into what's left of the screen. */
 @media (max-width: 800px) {
-  .layout { flex-direction: column; }
-  .map-wrap { flex: none; height: 50vh; }
-  .panel { width: 100%; border-left: 0; border-top: 1px solid var(--border); flex: 1; }
+  html, body { height: auto; }
+  body { display: block; min-height: 100%; }
+  .layout { display: block; }
+  .map-wrap { height: 45vh; height: 45svh; min-height: 240px; }
+  .panel { display: block; width: 100%; border-left: 0; border-top: 1px solid var(--border); }
+  .tabs { position: sticky; top: 0; z-index: 1100; background: var(--bg); }
+  .tab-body { overflow: visible; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .tab-body { padding-left: 12px; padding-right: 12px; }
+  table.compact { font-size: 0.7rem; }
+  table.compact th, table.compact td { padding: 5px 2px; }
   .status span { display: none; }
   .logo { height: 30px; }
   .topbar h1 { font-size: 1.05rem; }
