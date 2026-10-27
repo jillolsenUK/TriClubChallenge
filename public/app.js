@@ -56,9 +56,11 @@
   async function loadRoute() {
     route = await (await fetch('api/route')).json();
     const latlngs = route.points.map((p) => [p[0], p[1]]);
-    const line = L.polyline(latlngs, { color: '#c8102e', weight: 4, opacity: 0.75 }).addTo(map);
+    // Candy-cane route: red line with white dashes on top.
+    const line = L.polyline(latlngs, { color: '#c41e3a', weight: 6, opacity: 0.9 }).addTo(map);
+    L.polyline(latlngs, { color: '#ffffff', weight: 3, opacity: 0.95, dashArray: '8 10', interactive: false }).addTo(map);
     map.fitBounds(line.getBounds(), { padding: [20, 20] });
-    const flag = (txt) => L.divIcon({ className: '', html: '<div style="font-size:22px">' + txt + '</div>', iconSize: [24, 24], iconAnchor: [4, 22] });
+    const flag = (txt) => L.divIcon({ className: '', html: '<div style="font-size:26px">' + txt + '</div>', iconSize: [24, 24], iconAnchor: [4, 22] });
     L.marker(latlngs[0], { icon: flag('🏁'), title: 'Start' }).addTo(map).bindTooltip('Start');
     L.marker(latlngs[latlngs.length - 1], { icon: flag('🎅'), title: 'Finish' }).addTo(map).bindTooltip('Finish – ' + esc(route.name));
     $('route-name').textContent = route.name + ' · ' + km(route.totalKm);
