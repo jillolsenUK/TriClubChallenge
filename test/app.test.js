@@ -163,13 +163,27 @@ test('store keeps history when a team is renamed', () => {
   assert.strictEqual(t.styleIndex, 0);
 });
 
+test("a team's current name is never listed as a former name, and old stores start their name history afresh", () => {
+  const store = tmpStore();
+  const row = (name) => ({ key: 'slot:1', name, weekly: {}, total: { run: 1 } });
+  for (const name of ['Team 9', 'Sleighing it in Lycra', 'Team 9', 'Sleighing it in Lycra']) store.applyRows([row(name)]);
+  assert.deepStrictEqual(store.data.teams['slot:1'].previousNames, ['Team 9']);
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-'));
+  const teams = { 'slot:9': { key: 'slot:9', name: 'Sleighing it in Lycra', styleIndex: 8, previousNames: ['Team 9', 'Sleighing it in Lycra', 'Team 17'] } };
+  fs.writeFileSync(path.join(dir, 'store.json'), JSON.stringify({ version: 2, teams, weeks: {} }));
+  const t = new Store(dir).data.teams['slot:9'];
+  assert.deepStrictEqual(t.previousNames, []);
+  assert.strictEqual(t.styleIndex, 8); // keeps its icon
+});
+
 test('saved weeks not named by a Sunday date are dropped on start-up', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-'));
   const weeks = { '2026-W44': { a: { run: 1 } }, 0: { a: { run: 1 } }, 573: { a: { run: 1 } }, '2026-10-25': { a: { run: 2 } } };
   fs.writeFileSync(path.join(dir, 'store.json'), JSON.stringify({ version: 2, teams: {}, weeks }));
   const store = new Store(dir);
   assert.deepStrictEqual(store.data.weeks, { '2026-10-25': { a: { run: 2 } } });
-  assert.strictEqual(store.data.version, 2);
+  assert.strictEqual(store.data.version, 3);
 });
 
 test('weeks before CHALLENGE_START are not shown', () => {

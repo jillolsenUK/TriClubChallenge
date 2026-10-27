@@ -33,6 +33,7 @@
   const charmText = (n, unit = ' km') => '<span class="charm">+' + num(n) + unit + '</span>';
   const hexText = (n, unit = ' km') => '<span class="hex">' + (n ? '−' : '') + num(n) + unit + '</span>';
   const sessions = (n) => num(n) + (n === 1 ? ' session' : ' sessions');
+  const formerNames = (t) => (t.previousNames || []).filter((n) => n !== t.name);
   const weekName = (w) => (state.weekLabels && state.weekLabels[w]) || w;
   const failedChecks = (t) => t.checks.filter((c) => !c.ok);
   // e.g. "75 × 4" under the Run km, "6 sessions × 25" under Strength.
@@ -59,7 +60,25 @@
   const $ = (id) => document.getElementById(id);
 
   // ---- map ----
-  const map = L.map('map', { worldCopyJump: true });
+  // On touch screens one finger scrolls the page (so it can be scrolled past
+  // the map) and two fingers move and zoom the map.
+  const touch = window.matchMedia('(pointer: coarse)').matches;
+  const map = L.map('map', { worldCopyJump: true, dragging: !touch, touchZoom: true });
+  if (touch) {
+    const hint = L.DomUtil.create('div', 'map-hint', map.getContainer());
+    hint.textContent = 'Use two fingers to move the map';
+    let hideHint;
+    map.getContainer().addEventListener(
+      'touchmove',
+      (e) => {
+        if (e.touches.length !== 1) return hint.classList.remove('show');
+        hint.classList.add('show');
+        clearTimeout(hideHint);
+        hideHint = setTimeout(() => hint.classList.remove('show'), 1200);
+      },
+      { passive: true },
+    );
+  }
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -152,7 +171,7 @@
     const stat = (label, value) => '<div class="stat"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
     let html = '<div class="detail-head">' + teamIcon(t, 40) + '<div><h2>' + esc(t.name) + '</h2>' +
       '<div class="muted" style="font-size:.8rem">' + esc(s.shape.name) + ' marker' +
-      (t.previousNames.length ? ' · formerly ' + t.previousNames.map(esc).join(', ') : '') + '</div></div></div>';
+      (formerNames(t).length ? ' · formerly ' + formerNames(t).map(esc).join(', ') : '') + '</div></div></div>';
     html += '<div class="bar" style="height:10px"><span style="width:' + (t.progress * 100).toFixed(2) + '%;background:' + s.color + '"></span></div>';
     html += '<div class="stats">' +
       stat('Position', '#' + t.rank + ' of ' + state.teams.length) +

@@ -148,6 +148,23 @@ button:hover { border-color: var(--accent); }
 }
 
 .layout { flex: 1; display: flex; min-height: 0; }
+.map-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.map-hint.show { opacity: 1; }
 .map-wrap { flex: 1; min-width: 0; }
 #map { height: 100%; width: 100%; }
 
@@ -253,7 +270,7 @@ th { color: var(--muted); font-weight: 600; }
   html, body { height: auto; }
   body { display: block; min-height: 100%; }
   .layout { display: block; }
-  .map-wrap { height: 45vh; height: 45svh; min-height: 240px; }
+  .map-wrap { height: 38vh; height: 38svh; min-height: 220px; }
   .panel { display: block; width: 100%; border-left: 0; border-top: 1px solid var(--border); }
   .tabs { position: sticky; top: 0; z-index: 1100; background: var(--bg); }
   .tab-body { overflow: visible; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }

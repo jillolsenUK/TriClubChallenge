@@ -15,7 +15,7 @@ const path = require('path');
 const { weekStart, previousWeek, isSunday, isWeekKey } = require('./weeks');
 
 const FIELDS = ['run', 'cycle', 'swim', 'strength', 'charm', 'hex'];
-const VERSION = 2;
+const VERSION = 3;
 
 class Store {
   constructor(dir, timeZone = 'Europe/London') {
@@ -31,6 +31,10 @@ class Store {
       // race total comes from the sheet's total columns), so keep only weeks
       // named by their Sunday's date.
       for (const w of Object.keys(saved.weeks || {})) if (!isWeekKey(w)) delete saved.weeks[w];
+      // Before version 3, those mixed-up early figures also recorded "renames"
+      // that never happened (rows were matched up wrongly), so start the name
+      // history afresh.
+      if ((saved.version || 0) < 3) for (const t of Object.values(saved.teams || {})) t.previousNames = [];
       saved.version = VERSION;
       this.data = { ...this.data, ...saved };
     }
@@ -80,6 +84,8 @@ class Store {
       } else if (t.name !== r.name) {
         if (!t.previousNames.includes(t.name)) t.previousNames.push(t.name);
         t.name = r.name;
+        // Renamed back to an earlier name: it's the current name again, not a former one.
+        t.previousNames = t.previousNames.filter((n) => n !== t.name);
       }
       t.lastSeen = ts;
       if (rolledOver) this.catchUp(this.data.lastWeek, t.latest, r);
