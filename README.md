@@ -23,7 +23,9 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
   `swim-week`, …). Strength is a number of sessions. Charms are km added and hexes are km taken off (written as `50` or
   `-50`, either way). A team can't be pushed back past the start. The header row can sit below title rows.
 - **Weeks** run Sunday to Saturday (UK time). The sheet zeroes its weekly columns on Sunday; until it has, Sunday's
-  figures still count for the week just finished. Re-reading during a week updates that week's figures.
+  figures still count for the week just finished; the app tells the reset has happened when the figures drop.
+  Anything added to last week after the app's final read of it (say at 09:50, just before a 10:00 reset) is caught up
+  on the first read of the new week from the change in the total columns. Re-reading during a week updates that week's figures.
   Weeks are shown as `w/c 22 Nov`, or `Week 4 · 22 Nov` when `CHALLENGE_START` is set.
 - **Checks**: on every refresh the app compares its own sums with the sheet's `Weekly Total (Calulated)` and
   `Challenge Total (Calulated)` columns (empty cells are skipped). Any team that's out by more than 0.5 km gets a ⚠️ on
@@ -52,7 +54,7 @@ npm test
 | `SHEET_ID` | `1j1f2LI1zluWNUFeYprODvV0g6swACpYW1lss1ddDHf8` | Google Sheet ID |
 | `SHEET_GID` | `0` | Tab ID (the `gid=` number in the sheet URL) |
 | `SHEET_CSV_URL` | – | Use any CSV URL instead of the sheet |
-| `REFRESH_MINUTES` | `15` | How often to re-read the sheet |
+| `REFRESH_MINUTES` | `15` | How often to re-read the sheet (`0` = never; just show what's saved) |
 | `CHALLENGE_START` | – | `YYYY-MM-DD`; labels weeks `Week 1`, `Week 2`, … |
 | `TIME_ZONE` | `Europe/London` | Time zone for the Sunday-to-Saturday weeks |
 | `VALIDATION_TOLERANCE` | `0.5` | Largest km difference from the sheet's calculated totals still counted as a match |
@@ -88,6 +90,18 @@ Then deploy either way:
   in the repo settings add the secret `AZURE_WEBAPP_PUBLISH_PROFILE`
   (`az webapp deployment list-publishing-profiles -g $RG -n $APP --xml`) and the variable `AZURE_WEBAPP_NAME=$APP`.
 - **Manually**: `az webapp up -g $RG -n $APP --runtime "NODE:22-lts"` from the repo folder.
+
+## Simulating the challenge
+
+`npm run simulate -- [outDir] [--seed=N] [--refresh=15]` plays the spreadsheet forward from
+`test/fixtures/sheet-2026-11-26.csv` to Christmas Eve, running the app's real code against it. Teams log
+activities, charms and hexes are handed out, placeholder teams are renamed, late Saturday entries arrive on Sunday
+morning and the `-week` columns are zeroed at 10:00 every Sunday. The app reads the sheet every 15 minutes. It then
+compares every saved week with the sheet's `Weekly Total (Calulated)` and every team's total with
+`Challenge Total (Calulated)`, and writes `report.md` (with the full activity log) and `store.json` to `outDir`.
+It exits non-zero if anything doesn't match.
+
+To look at the simulated race in the browser: `DATA_DIR=outDir REFRESH_MINUTES=0 npm start`.
 
 ## Changing the route
 

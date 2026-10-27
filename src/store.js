@@ -4,6 +4,8 @@
 //                     latest: { weekly, total, sheetWeeklyTotal, sheetChallengeTotal, at } } }
 //   weeks: { [sundayDate]: { [teamKey]: { run, cycle, swim, strength, charm, hex,
 //                                         sheetWeeklyTotal, updatedAt } } }
+//   resetSeen: { [sundayDate]: true }  (the sheet's weekly columns have been zeroed for that week)
+//   lastWeek: the week the previous refresh saved into
 //   lastFetch, lastError
 // `weekly`/`total` hold the raw sheet values; km are worked out in race.js.
 
@@ -19,7 +21,7 @@ class Store {
     this.file = path.join(dir, 'store.json');
     this.timeZone = timeZone;
     fs.mkdirSync(dir, { recursive: true });
-    this.data = { version: VERSION, teams: {}, weeks: {}, lastFetch: null, lastError: null };
+    this.data = { version: VERSION, teams: {}, weeks: {}, resetSeen: {}, lastFetch: null, lastError: null };
     if (fs.existsSync(this.file)) {
       const saved = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       // Version 1 saved the sheet's challenge totals under ISO week labels
@@ -40,22 +42,31 @@ class Store {
     fs.renameSync(tmp, this.file);
   }
 
-  // Which week a team's weekly columns belong to right now. The sheet zeroes
-  // them some time on Sunday; until it has (the figures haven't dropped below
-  // what we saved for last week), Sunday's figures still belong to last week.
-  weekFor(teamKey, weekly, now) {
+  // Which week the sheet's weekly columns belong to right now. The organiser
+  // zeroes them for every team some time on Sunday. Until that has happened
+  // (no team's figures have dropped below what we saved for last week),
+  // Sunday's figures, including late entries, still belong to last week.
+  weekFor(rows, now) {
     const current = weekStart(now, this.timeZone);
-    if (!isSunday(now, this.timeZone) || this.data.weeks[current]?.[teamKey]) return current;
-    const last = this.data.weeks[previousWeek(current)]?.[teamKey];
+    if (!isSunday(now, this.timeZone) || this.data.resetSeen[current]) return current;
+    const last = this.data.weeks[previousWeek(current)] || {};
     const sum = (o) => FIELDS.reduce((a, k) => a + (o[k] || 0), 0);
-    const notReset = last && sum(last) > 0 && FIELDS.every((k) => (weekly[k] || 0) >= (last[k] || 0));
-    return notReset ? previousWeek(current) : current;
+    const hadLastWeek = rows.filter((r) => last[r.key] && sum(last[r.key]) > 0);
+    if (!hadLastWeek.length) return current; // nothing to tell a reset by
+    const dropped = hadLastWeek.some((r) => FIELDS.some((k) => (r.weekly[k] || 0) < (last[r.key][k] || 0)));
+    if (!dropped) return previousWeek(current);
+    this.data.resetSeen[current] = true;
+    return current;
   }
 
   // Record one refresh worth of team entries from the sheet.
   applyRows(rows, now = new Date()) {
     const ts = now.toISOString();
     const { teams, weeks } = this.data;
+    const week = this.weekFor(rows, now);
+    // First read of a new week: catch up anything added to last week after our
+    // last read of it (e.g. just before the Sunday reset).
+    const rolledOver = this.data.lastWeek && week !== this.data.lastWeek && previousWeek(week) === this.data.lastWeek;
     for (const r of rows) {
       let t = teams[r.key];
       if (!t) {
@@ -71,6 +82,7 @@ class Store {
         t.name = r.name;
       }
       t.lastSeen = ts;
+      if (rolledOver) this.catchUp(this.data.lastWeek, t.latest, r);
       t.latest = {
         weekly: r.weekly,
         total: r.total,
@@ -79,12 +91,25 @@ class Store {
         at: ts,
       };
 
-      const week = this.weekFor(r.key, r.weekly, now);
       weeks[week] = weeks[week] || {};
       weeks[week][r.key] = { ...r.weekly, sheetWeeklyTotal: r.sheetWeeklyTotal ?? null, updatedAt: ts };
     }
+    this.data.lastWeek = week;
     this.data.lastFetch = ts;
     this.data.lastError = null;
+  }
+
+  // Every entry goes into both a team's weekly and total columns, so between
+  // our last read of last week and this first read of the new one:
+  //   total now − total then = (late additions to last week) + (new week so far).
+  // Whatever the new week's figures don't account for belongs to last week.
+  catchUp(lastWeek, before, r) {
+    const saved = this.data.weeks[lastWeek]?.[r.key];
+    if (!saved || !before?.total || !r.total) return;
+    for (const k of FIELDS) {
+      const late = (r.total[k] || 0) - (before.total[k] || 0) - (r.weekly[k] || 0);
+      if (late > 1e-9) saved[k] = +((saved[k] || 0) + late).toFixed(6);
+    }
   }
 }
 

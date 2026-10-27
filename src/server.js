@@ -74,6 +74,9 @@ app.get('/healthz', (req, res) => res.send('ok'));
 
 app.listen(config.port, () => {
   console.log(`TriClub Challenge on port ${config.port}, data in ${config.dataDir}`);
-  refresh();
-  setInterval(refresh, config.refreshMinutes * 60 * 1000);
+  // REFRESH_MINUTES=0 only shows what's saved (e.g. a simulation's store.json).
+  if (config.refreshMinutes > 0) {
+    refresh();
+    setInterval(refresh, config.refreshMinutes * 60 * 1000);
+  }
 });

@@ -115,6 +115,36 @@ test("on Sunday, figures the sheet hasn't zeroed yet still count for last week",
   assert.strictEqual(computeState(data, route, config).teams[0].totals.total, (9 + 3) * 4);
 });
 
+test('on Sunday, a late entry from a team with nothing last week still counts for last week', () => {
+  const store = tmpStore();
+  const blank = { run: 0, cycle: 0, swim: 0, strength: 0, charm: 0, hex: 0 };
+  const rows = (a, b) => [
+    { key: 'slot:1', name: 'A', weekly: { ...blank, run: a }, total: null },
+    { key: 'slot:2', name: 'B', weekly: { ...blank, swim: b }, total: null },
+  ];
+  store.applyRows(rows(8, 0), new Date('2026-11-21T20:00:00Z')); // Sat: B has done nothing
+  store.applyRows(rows(8, 1), new Date('2026-11-22T08:00:00Z')); // Sun, before reset: B logs Saturday's swim
+  store.applyRows(rows(0, 0), new Date('2026-11-22T10:00:00Z')); // Sun: organiser zeroes the week
+  store.applyRows(rows(0, 2), new Date('2026-11-22T18:00:00Z')); // Sun: B's first swim of the new week
+  const { weeks } = store.data;
+  assert.strictEqual(weeks['2026-11-15']['slot:2'].swim, 1);
+  assert.strictEqual(weeks['2026-11-22']['slot:2'].swim, 2);
+  assert.strictEqual(weeks['2026-11-15']['slot:1'].run, 8);
+});
+
+test('an entry added just before the Sunday reset, after our last read, still counts for last week', () => {
+  const store = tmpStore();
+  const blank = { run: 0, cycle: 0, swim: 0, strength: 0, charm: 0, hex: 0 };
+  const row = (weekRun, totalRun) => [{ key: 'slot:1', name: 'A', weekly: { ...blank, run: weekRun }, total: { ...blank, run: totalRun } }];
+  store.applyRows(row(6, 18), new Date('2026-11-21T20:00:00Z')); // Sat
+  store.applyRows(row(8, 20), new Date('2026-11-22T09:45:00Z')); // Sun, last read before the reset
+  // 09:50 someone adds a 5 km run for Saturday (week 8 -> 13, total 20 -> 25); 10:00 the sheet is reset;
+  // 10:05 the new week's first 2 km run (week 0 -> 2, total 25 -> 27).
+  store.applyRows(row(2, 27), new Date('2026-11-22T10:15:00Z'));
+  assert.strictEqual(store.data.weeks['2026-11-15']['slot:1'].run, 13);
+  assert.strictEqual(store.data.weeks['2026-11-22']['slot:1'].run, 2);
+});
+
 test('store keeps history when a team is renamed', () => {
   const store = tmpStore();
   const row = (name) => ({ key: 'slot:1', name, weekly: {}, total: { run: 1 } });
