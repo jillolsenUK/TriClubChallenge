@@ -3,7 +3,7 @@ const path = require('path');
 const express = require('express');
 const config = require('./config');
 const { Store } = require('./store');
-const { fetchSheet, extractTeams } = require('./sheet');
+const { fetchSheet, fetchMessage, extractTeams } = require('./sheet');
 const { computeState } = require('./race');
 
 const route = require('../route/route.json');
@@ -27,6 +27,14 @@ async function refresh() {
     } catch (err) {
       store.data.lastError = { message: err.message, at: new Date().toISOString() };
       console.error('Refresh failed:', err.message);
+    }
+    // The banner message is optional: if it can't be read, keep the last one.
+    try {
+      const text = await fetchMessage();
+      if (text === null) console.warn('Message tab not found or has no "Message" header in A1');
+      else store.data.message = text;
+    } catch (err) {
+      console.warn('Message refresh failed:', err.message);
     } finally {
       store.save();
       refreshing = null;

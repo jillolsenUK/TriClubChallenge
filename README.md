@@ -14,6 +14,8 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
   week-by-week table, previous team names, and whether the totals match the sheet's calculated columns.
 - **Weekly pane**: every team's combined total for each week.
 - **Disciplines pane**: stacked bars showing how much each discipline contributed for each team.
+- **Message banner**: the text in cell A2 of the sheet's second tab (under a `Message` header in A1) scrolls left to
+  right in a candy-cane banner under the header. It's re-read with every refresh; when A2 is empty there's no banner.
 
 ## How it works
 
@@ -62,6 +64,8 @@ npm test
 | `TEAM_KEY` | `slot` | `slot` (row position) or `name` |
 | `SCALE_RUN`, `SCALE_CYCLE`, `SCALE_SWIM`, `SCALE_STRENGTH` | `4`, `1`, `26`, `25` | km per unit of each sheet value |
 | `COL_TEAM`, `COL_TEAM_ID`, `COL_RUN_WEEKLY`, `COL_RUN_TOTAL` (and the same for `CYCLE`, `SWIM`, `STRENGTH`, `CHARM`, `HEX`), `COL_WEEKLY_CALCULATED`, `COL_CHALLENGE_CALCULATED` | auto | Exact header names, if auto-detection picks the wrong column |
+| `MESSAGE_SHEET` | `Sheet2`, then `Sheet 2` | Tab holding the banner message (`Message` in A1, the text in A2) |
+| `MESSAGE_CSV_URL` | – | Use any CSV URL for the banner message instead |
 | `ADMIN_KEY` | – | If set, the Refresh button asks for this key |
 | `DATA_DIR` | `./data` (`/home/data` on Azure) | Where `store.json` is kept |
 

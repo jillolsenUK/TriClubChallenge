@@ -157,8 +157,16 @@ function extractTeams(rows) {
   return { teams: out, columns: cols, header: rows[headerIdx] };
 }
 
-async function fetchSheet() {
-  const res = await fetch(config.sheetCsvUrl, { redirect: 'follow' });
+// The banner message is the cell under a "Message" header in column A.
+// Returns null if the tab doesn't look like that (Google returns the first
+// tab when the named one doesn't exist, so the header has to match).
+function extractMessage(rows) {
+  if (!rows.length || norm(rows[0][0]) !== 'message') return null;
+  return String((rows[1] && rows[1][0]) || '').trim();
+}
+
+async function fetchCsv(url) {
+  const res = await fetch(url, { redirect: 'follow' });
   if (!res.ok) throw new Error(`Sheet download failed: HTTP ${res.status}`);
   const text = await res.text();
   if (/^\s*<!doctype html|^\s*<html/i.test(text)) {
@@ -167,4 +175,13 @@ async function fetchSheet() {
   return parseCsv(text);
 }
 
-module.exports = { parseCsv, mapColumns, extractTeams, fetchSheet, toNumber, FIELD_KEYS };
+const fetchSheet = () => fetchCsv(config.sheetCsvUrl);
+async function fetchMessage() {
+  for (const url of config.messageCsvUrls) {
+    const text = extractMessage(await fetchCsv(url));
+    if (text !== null) return text;
+  }
+  return null;
+}
+
+module.exports = { parseCsv, mapColumns, extractTeams, extractMessage, fetchSheet, fetchMessage, toNumber, FIELD_KEYS };

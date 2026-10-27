@@ -9,6 +9,12 @@ const sheetGid = env.SHEET_GID || '0';
 module.exports = {
   port: num(env.PORT, 3000),
   sheetCsvUrl: env.SHEET_CSV_URL || `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${sheetGid}`,
+  // The banner message: cell A2 under a "Message" header, on the first of these tabs that has one.
+  messageCsvUrls: env.MESSAGE_CSV_URL
+    ? [env.MESSAGE_CSV_URL]
+    : (env.MESSAGE_SHEET ? [env.MESSAGE_SHEET] : ['Sheet2', 'Sheet 2']).map(
+        (tab) => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`,
+      ),
   // Azure App Service keeps /home across restarts and deployments.
   dataDir: env.DATA_DIR || (env.WEBSITE_SITE_NAME ? '/home/data' : path.join(__dirname, '..', 'data')),
   refreshMinutes: num(env.REFRESH_MINUTES, 15),

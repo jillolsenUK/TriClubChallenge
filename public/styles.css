@@ -108,6 +108,45 @@ button:hover { border-color: var(--accent); }
 #refresh-btn:hover { filter: brightness(1.1); }
 #refresh-btn:disabled { opacity: 0.6; cursor: wait; }
 
+/* Festive message banner: candy-cane stripes, text scrolling left to right. */
+.message-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 10px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  background: repeating-linear-gradient(-45deg, #c41e3a 0 16px, #a8162f 16px 32px);
+  border-bottom: 3px solid var(--gold);
+}
+.message-banner[hidden] { display: none; }
+.mb-deco { font-size: 1.2rem; flex: none; }
+.marquee { position: relative; flex: 1; height: 100%; overflow: hidden; }
+.marquee span {
+  position: absolute;
+  top: 50%;
+  white-space: nowrap;
+  animation: scroll-right var(--scroll-duration, 20s) linear infinite;
+}
+.marquee:hover span { animation-play-state: paused; }
+@keyframes scroll-right {
+  from { left: 0; transform: translate(-100%, -50%); }
+  to { left: 100%; transform: translate(0, -50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee span {
+    animation: none;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 .layout { flex: 1; display: flex; min-height: 0; }
 .map-wrap { flex: 1; min-width: 0; }
 #map { height: 100%; width: 100%; }

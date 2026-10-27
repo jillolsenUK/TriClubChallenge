@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { parseCsv, extractTeams, toNumber } = require('../src/sheet');
+const { parseCsv, extractTeams, extractMessage, toNumber } = require('../src/sheet');
 const { Store } = require('../src/store');
 const { computeState } = require('../src/race');
 const { positionAt } = require('../src/geo');
@@ -35,6 +35,12 @@ const SHEET = [
 test('parseCsv handles quotes, commas and CRLF', () => {
   const rows = parseCsv('a,"b, c","say ""hi"""\r\n1,2,3\n');
   assert.deepStrictEqual(rows, [['a', 'b, c', 'say "hi"'], ['1', '2', '3']]);
+});
+
+test('extractMessage reads A2 under a "Message" header, and ignores other tabs', () => {
+  assert.strictEqual(extractMessage(parseCsv('"Message"\n"Go team, 3 weeks to Santa! 🎅"\n')), 'Go team, 3 weeks to Santa! 🎅');
+  assert.strictEqual(extractMessage(parseCsv('Message\n')), '');
+  assert.strictEqual(extractMessage(parseCsv('Team Name,Run-total\nTeam 1,5\n')), null);
 });
 
 test('toNumber strips units and thousands separators', () => {

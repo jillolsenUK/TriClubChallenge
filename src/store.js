@@ -6,6 +6,7 @@
 //                                         sheetWeeklyTotal, updatedAt } } }
 //   resetSeen: { [sundayDate]: true }  (the sheet's weekly columns have been zeroed for that week)
 //   lastWeek: the week the previous refresh saved into
+//   message: the banner text from the sheet's Message tab
 //   lastFetch, lastError
 // `weekly`/`total` hold the raw sheet values; km are worked out in race.js.
 

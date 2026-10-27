@@ -105,6 +105,7 @@ function computeState(data, route, config) {
     scale: config.scale,
     teams,
     validation: { checked: teams.reduce((n, t) => n + t.checks.length, 0), mismatches },
+    message: data.message || '',
     lastFetch: data.lastFetch,
     lastError: data.lastError,
   };

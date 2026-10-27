@@ -237,7 +237,31 @@
     $('weekly-note').textContent = formula();
   }
 
+  // Scrolls at a steady ~70 px/s whatever the message length or screen width.
+  function sizeMessage() {
+    const box = document.querySelector('.marquee');
+    const text = $('message-text');
+    if (!box.clientWidth) return;
+    text.style.setProperty('--scroll-duration', ((box.clientWidth + text.scrollWidth) / 70).toFixed(1) + 's');
+  }
+
+  function renderMessage() {
+    const text = (state.message || '').trim();
+    const banner = $('message-banner');
+    if (banner.hidden === !!text) {
+      banner.hidden = !text;
+      map.invalidateSize(); // the banner changes the map's height
+    }
+    // Only touch the text when it changes, so the scroll doesn't restart every refresh.
+    if ($('message-text').textContent !== text) {
+      $('message-text').textContent = text;
+      banner.title = text;
+      sizeMessage();
+    }
+  }
+
   function render() {
+    renderMessage();
     updateMarkers();
     renderLeaderboard();
     renderTeamSelect();
@@ -297,6 +321,7 @@
     }
   });
 
+  window.addEventListener('resize', sizeMessage);
   loadRoute().then(loadState);
   setInterval(loadState, 60 * 1000);
 })();
