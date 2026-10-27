@@ -8,13 +8,14 @@ Team figures are read from a public Google Sheet. A team's distance along the ro
 worked out from the sheet's challenge **total** columns, the same formula as its `Challenge Total (Calulated)` column.
 Each week's figures (from the **weekly** columns) are saved too, so the app shows a week-by-week history.
 
-- **Map**: the route, with each team shown at its current position. Every team gets its own Christmas picture and ring colour.
+- **Map**: the route, with each team shown at its current position. A team with a picture on the sheet's `Images` tab
+  shows that picture; every other team gets its own Christmas emoji. Each team also has its own ring colour.
 - **Leaderboard**: rank, km covered, % complete, gap to the leader.
 - **Team pane**: position, distance, km to go, this week's km, totals by discipline (with the raw sheet value × multiplier),
   week-by-week table, previous team names, and whether the totals match the sheet's calculated columns.
 - **Weekly pane**: every team's combined total for each week.
 - **Disciplines pane**: stacked bars showing how much each discipline contributed for each team.
-- **Message banner**: the text in cell A2 of the sheet's second tab (under a `Message` header in A1) scrolls right to
+- **Message banner**: the text in cell A2 of the sheet's `Message` tab (under a `Message` header in A1) scrolls right to
   left in a candy-cane banner under the header. It's re-read with every refresh; when A2 is empty there's no banner.
 
 ## How it works
@@ -37,7 +38,11 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
   history, icon and place, and the new name shows straight away (old names are listed in the Team pane).
   If you add a `Team ID` column the app uses that instead, which also survives teams being reordered.
   Set `TEAM_KEY=name` to recognise teams by name instead.
-- **Icons**: team *n* gets Christmas picture `n mod 11` (tree, snowman, reindeer, present, bell, star, stocking, cookie,
+- **Team pictures**: on the `Images` tab, each team's name is a header in row 1 with a picture placed under it. CSV
+  exports leave pictures out, so the app downloads the workbook as `.xlsx` (every `IMAGES_REFRESH_MINUTES`, at startup and
+  on **Refresh**), finds each picture's cell, and pairs it with the header above it. Pictures are matched to teams by
+  name, so rename a team on both tabs. They're shrunk to 128×128 for the markers.
+- **Icons**: teams without a picture get Christmas picture `n mod 11` (tree, snowman, reindeer, present, bell, star, stocking, cookie,
   penguin, elf, snowflake) in a ring of colour `n mod 10`, so the first 10 teams differ in both picture and colour, and
   the first 110 teams all have different combinations.
 - Data is stored in `store.json` in `DATA_DIR`. On Azure this defaults to `/home/data`, which persists across restarts and redeployments.
@@ -64,8 +69,11 @@ npm test
 | `TEAM_KEY` | `slot` | `slot` (row position) or `name` |
 | `SCALE_RUN`, `SCALE_CYCLE`, `SCALE_SWIM`, `SCALE_STRENGTH` | `4`, `1`, `26`, `25` | km per unit of each sheet value |
 | `COL_TEAM`, `COL_TEAM_ID`, `COL_RUN_WEEKLY`, `COL_RUN_TOTAL` (and the same for `CYCLE`, `SWIM`, `STRENGTH`, `CHARM`, `HEX`), `COL_WEEKLY_CALCULATED`, `COL_CHALLENGE_CALCULATED` | auto | Exact header names, if auto-detection picks the wrong column |
-| `MESSAGE_SHEET` | `Sheet2`, then `Sheet 2` | Tab holding the banner message (`Message` in A1, the text in A2) |
+| `MESSAGE_SHEET` | `Message`, then `Sheet2`, `Sheet 2` | Tab holding the banner message (`Message` in A1, the text in A2) |
 | `MESSAGE_CSV_URL` | – | Use any CSV URL for the banner message instead |
+| `IMAGES_SHEET` | `Images` | Tab holding the team pictures |
+| `IMAGES_REFRESH_MINUTES` | `60` | How often to re-read the team pictures |
+| `IMAGES_XLSX_URL` | – | Use any `.xlsx` URL for the team pictures instead |
 | `ADMIN_KEY` | – | If set, the Refresh button asks for this key |
 | `DATA_DIR` | `./data` (`/home/data` on Azure) | Where `store.json` is kept |
 
