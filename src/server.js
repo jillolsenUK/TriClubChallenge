@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const config = require('./config');
@@ -30,7 +31,16 @@ async function refresh() {
   return refreshing;
 }
 
+// Serve index.html with a per-deploy version on its CSS/JS links, so browsers
+// fetch fresh copies after every deploy instead of reusing old cached ones.
+const version = Date.now().toString(36);
+const indexHtml = fs
+  .readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
+  .replace(/__VERSION__/g, version);
+const sendIndex = (req, res) => res.set('Cache-Control', 'no-cache').type('html').send(indexHtml);
+
 const app = express();
+app.get(['/', '/index.html'], sendIndex);
 // No max-age on the app's own files: browsers revalidate (cheap, via ETag) so a
 // new deploy shows up on the next page load.
 app.use(express.static(path.join(__dirname, '..', 'public')));
