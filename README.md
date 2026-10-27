@@ -62,7 +62,7 @@ RG=triclub-rg
 APP=triclub-challenge-$RANDOM     # must be globally unique
 az group create -n $RG -l uksouth
 az appservice plan create -g $RG -n triclub-plan --is-linux --sku B1
-az webapp create -g $RG -p triclub-plan -n $APP --runtime "NODE:20-lts"
+az webapp create -g $RG -p triclub-plan -n $APP --runtime "NODE:22-lts"
 az webapp config set -g $RG -n $APP --always-on true --startup-file "npm start"
 az webapp config appsettings set -g $RG -n $APP --settings \
   SCM_DO_BUILD_DURING_DEPLOYMENT=true DATA_DIR=/home/data REFRESH_MINUTES=15
@@ -76,7 +76,7 @@ Then deploy either way:
 - **GitHub Actions** (`.github/workflows/azure-webapp.yml`, runs on every push to `main`):
   in the repo settings add the secret `AZURE_WEBAPP_PUBLISH_PROFILE`
   (`az webapp deployment list-publishing-profiles -g $RG -n $APP --xml`) and the variable `AZURE_WEBAPP_NAME=$APP`.
-- **Manually**: `az webapp up -g $RG -n $APP --runtime "NODE:20-lts"` from the repo folder.
+- **Manually**: `az webapp up -g $RG -n $APP --runtime "NODE:22-lts"` from the repo folder.
 
 ## Changing the route
 
