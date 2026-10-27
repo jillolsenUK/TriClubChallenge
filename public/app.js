@@ -1,31 +1,22 @@
 (function () {
   'use strict';
 
-  // Each team gets shape = index % 9 and colour = index % 10, so the first nine
-  // teams all differ in both shape and colour, and every combination is unique
-  // for the first 90 teams.
-  const COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#9a6324', '#ffe119', '#1b1f6b'];
-
-  const poly = (n, r, rot = -90, inner) => {
-    const pts = [];
-    const count = inner ? n * 2 : n;
-    for (let i = 0; i < count; i++) {
-      const rad = ((rot + (360 / count) * i) * Math.PI) / 180;
-      const rr = inner && i % 2 ? inner : r;
-      pts.push((12 + rr * Math.cos(rad)).toFixed(2) + ',' + (12 + rr * Math.sin(rad)).toFixed(2));
-    }
-    return '<polygon points="' + pts.join(' ') + '"/>';
-  };
+  // Each team gets a Christmas picture = index % 11 inside a ring coloured
+  // index % 10, so the first ten teams differ in both picture and colour, and
+  // every combination is unique for the first 110 teams.
+  const COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#9a6324', '#ffc20e', '#1b1f6b'];
   const SHAPES = [
-    { name: 'circle', svg: '<circle cx="12" cy="12" r="9"/>' },
-    { name: 'square', svg: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/>' },
-    { name: 'triangle', svg: '<polygon points="12,2.5 22,20.5 2,20.5"/>' },
-    { name: 'diamond', svg: '<polygon points="12,1.5 22.5,12 12,22.5 1.5,12"/>' },
-    { name: 'star', svg: poly(5, 11, -90, 4.8) },
-    { name: 'hexagon', svg: poly(6, 10, 0) },
-    { name: 'pentagon', svg: poly(5, 10.5) },
-    { name: 'cross', svg: '<polygon points="8.5,2 15.5,2 15.5,8.5 22,8.5 22,15.5 15.5,15.5 15.5,22 8.5,22 8.5,15.5 2,15.5 2,8.5 8.5,8.5"/>' },
-    { name: 'inverted triangle', svg: '<polygon points="2,3.5 22,3.5 12,21.5"/>' },
+    { name: 'Christmas tree', emoji: '🎄' },
+    { name: 'Snowman', emoji: '⛄' },
+    { name: 'Reindeer', emoji: '🦌' },
+    { name: 'Present', emoji: '🎁' },
+    { name: 'Bell', emoji: '🔔' },
+    { name: 'Star', emoji: '⭐' },
+    { name: 'Stocking', emoji: '🧦' },
+    { name: 'Cookie', emoji: '🍪' },
+    { name: 'Penguin', emoji: '🐧' },
+    { name: 'Elf', emoji: '🧝' },
+    { name: 'Snowflake', emoji: '❄️' },
   ];
   const DISCIPLINES = [
     { key: 'run', label: 'Run', color: '#e4572e' },
@@ -38,10 +29,11 @@
     color: COLORS[team.styleIndex % COLORS.length],
     shape: SHAPES[team.styleIndex % SHAPES.length],
   });
-  const iconSvg = (team, size) => {
+  const teamIcon = (team, size) => {
     const s = styleFor(team);
-    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" role="img" aria-label="' + s.shape.name +
-      '"><g fill="' + s.color + '" stroke="#fff" stroke-width="1.6" stroke-linejoin="round">' + s.shape.svg + '</g></svg>';
+    const ring = Math.max(3, Math.round(size / 8));
+    return '<span class="xmas-badge" role="img" aria-label="' + s.shape.name + '" style="width:' + size + 'px;height:' + size +
+      'px;border-width:' + ring + 'px;border-color:' + s.color + ';font-size:' + Math.round(size * 0.55) + 'px">' + s.shape.emoji + '</span>';
   };
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -76,7 +68,7 @@
     const seen = new Set();
     for (const t of state.teams) {
       seen.add(t.key);
-      const icon = L.divIcon({ className: 'team-icon', html: iconSvg(t, 28), iconSize: [28, 28], iconAnchor: [14, 14] });
+      const icon = L.divIcon({ className: 'team-icon', html: teamIcon(t, 34), iconSize: [34, 34], iconAnchor: [17, 17] });
       const tip = '<strong>' + esc(t.name) + '</strong><br>#' + t.rank + ' · ' + km(t.distanceKm) + ' (' + pct(t.progress) + ')';
       let m = markers[t.key];
       if (!m) {
@@ -86,7 +78,7 @@
         m.setLatLng([t.position.lat, t.position.lon]).setIcon(icon);
       }
       m.setZIndexOffset(1000 - t.rank);
-      m.unbindTooltip().bindTooltip(tip, { className: 'team-label', direction: 'top', offset: [0, -12] });
+      m.unbindTooltip().bindTooltip(tip, { className: 'team-label', direction: 'top', offset: [0, -16] });
     }
     for (const k of Object.keys(markers)) {
       if (!seen.has(k)) {
@@ -103,7 +95,7 @@
       const s = styleFor(t);
       return '<li data-key="' + esc(t.key) + '">' +
         '<span class="rank">' + t.rank + '</span>' +
-        iconSvg(t, 24) +
+        teamIcon(t, 30) +
         '<div><div class="team-name">' + esc(t.name) + (t.finished ? ' 🎅' : '') + '</div>' +
         '<div class="team-sub">' + pct(t.progress) + (t.rank > 1 ? ' · ' + km(t.behindLeaderKm) + ' behind' : ' · leading') + '</div>' +
         '<div class="bar"><span style="width:' + (t.progress * 100).toFixed(2) + '%;background:' + s.color + '"></span></div></div>' +
@@ -129,7 +121,7 @@
     }
     const s = styleFor(t);
     const stat = (label, value) => '<div class="stat"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
-    let html = '<div class="detail-head">' + iconSvg(t, 32) + '<div><h2>' + esc(t.name) + '</h2>' +
+    let html = '<div class="detail-head">' + teamIcon(t, 40) + '<div><h2>' + esc(t.name) + '</h2>' +
       '<div class="muted" style="font-size:.8rem">' + esc(s.shape.name) + ' marker' +
       (t.previousNames.length ? ' · formerly ' + t.previousNames.map(esc).join(', ') : '') + '</div></div></div>';
     html += '<div class="bar" style="height:10px"><span style="width:' + (t.progress * 100).toFixed(2) + '%;background:' + s.color + '"></span></div>';

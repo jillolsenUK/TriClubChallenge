@@ -1,11 +1,11 @@
-# TriClub Challenge
+# Tri Before Xmas
 
-A virtual team race along the **Finding Santa** GPX route (Hyde Park, London → Lapland, 3,539 km).
+London Frontrunners' Christmas challenge: a virtual team race along the **Finding Santa** GPX route (Hyde Park, London → Lapland, 3,539 km).
 Team totals are read from a public Google Sheet. Each week's totals are saved, and
 **Run-Total + Cycle-Total + Swim-Total + Strength-Total** summed over every week is how far a team
 has travelled along the route.
 
-- **Map**: the route, with each team shown at its current position. Every team gets its own colour and shape.
+- **Map**: the route, with each team shown at its current position. Every team gets its own Christmas picture and ring colour.
 - **Leaderboard**: rank, km covered, % complete, gap to the leader.
 - **Team pane**: position, distance, km to go, totals by discipline, week-by-week table, previous team names.
 - **Weekly pane**: every team's combined total for each week.
@@ -23,8 +23,9 @@ has travelled along the route.
   history, icon and place, and the new name shows straight away (old names are listed in the Team pane).
   If you add a `Team ID` column the app uses that instead, which also survives teams being reordered.
   Set `TEAM_KEY=name` to recognise teams by name instead.
-- **Icons**: team *n* gets shape `n mod 9` and colour `n mod 10`, so the first 9 teams differ in both shape and
-  colour, and the first 90 teams all have different shape/colour combinations.
+- **Icons**: team *n* gets Christmas picture `n mod 11` (tree, snowman, reindeer, present, bell, star, stocking, cookie,
+  penguin, elf, snowflake) in a ring of colour `n mod 10`, so the first 10 teams differ in both picture and colour, and
+  the first 110 teams all have different combinations.
 - Data is stored in `store.json` in `DATA_DIR`. On Azure this defaults to `/home/data`, which persists across restarts and redeployments.
 
 ## Run locally
