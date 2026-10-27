@@ -14,8 +14,8 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
   week-by-week table, previous team names, and whether the totals match the sheet's calculated columns.
 - **Weekly pane**: every team's combined total for each week.
 - **Disciplines pane**: stacked bars showing how much each discipline contributed for each team.
-- **Message banner**: the text in cell A2 of the sheet's second tab (under a `Message` header in A1) scrolls left to
-  right in a candy-cane banner under the header. It's re-read with every refresh; when A2 is empty there's no banner.
+- **Message banner**: the text in cell A2 of the sheet's second tab (under a `Message` header in A1) scrolls right to
+  left in a candy-cane banner under the header. It's re-read with every refresh; when A2 is empty there's no banner.
 
 ## How it works
 
