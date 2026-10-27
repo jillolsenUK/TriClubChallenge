@@ -29,6 +29,9 @@
   const ADDS = [...DISCIPLINES, BONUS];
   const signedKm = (n, sign) => (n ? sign : '') + km(n);
   const num = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  // Charm totals in purple, hex totals in red.
+  const charmText = (n, unit = ' km') => '<span class="charm">+' + num(n) + unit + '</span>';
+  const hexText = (n, unit = ' km') => '<span class="hex">' + (n ? '−' : '') + num(n) + unit + '</span>';
   const sessions = (n) => n + (n === 1 ? ' session' : ' sessions');
 
   const styleFor = (team) => ({
@@ -106,6 +109,8 @@
         teamIcon(t, 30) +
         '<div><div class="team-name">' + esc(t.name) + (t.finished ? ' 🎅' : '') + '</div>' +
         '<div class="team-sub">' + pct(t.progress) + (t.rank > 1 ? ' · ' + km(t.behindLeaderKm) + ' behind' : ' · leading') + '</div>' +
+        '<div class="team-sub adj"><span title="Charms (added)">✨ ' + charmText(t.totals.charm) + '</span>' +
+        '<span title="Hexes (taken off)">🧙 ' + hexText(t.totals.hex) + '</span></div>' +
         '<div class="bar"><span style="width:' + (t.progress * 100).toFixed(2) + '%;background:' + s.color + '"></span></div></div>' +
         '<span class="km">' + km(t.distanceKm) + '</span></li>';
     }).join('');
@@ -146,16 +151,16 @@
     html += '<h3>Totals by discipline</h3><div class="stats">' +
       DISCIPLINES.map((d) => stat(dot(d.color) + d.label, km(t.totals[d.key]) +
         (d.key === 'strength' ? '<div class="muted" style="font-size:.75rem;font-weight:400">' + sessions(t.totals.strengthSessions) + ' × 25 km</div>' : ''))).join('') +
-      stat(dot(BONUS.color) + 'Charms ✨ (added)', signedKm(t.totals.charm, '+')) +
-      stat(dot('#555') + 'Hexes 🧙 (taken off)', signedKm(t.totals.hex, '−')) +
+      stat(dot(BONUS.color) + 'Charms ✨ (added)', '<span class="charm">' + signedKm(t.totals.charm, '+') + '</span>') +
+      stat(dot('var(--hex)') + 'Hexes 🧙 (taken off)', '<span class="hex">' + signedKm(t.totals.hex, '−') + '</span>') +
       '</div>';
 
     html += '<h3>Weekly totals (km)</h3><div class="table-scroll"><table class="compact"><thead><tr><th>Week</th>' +
       DISCIPLINES.map((d) => '<th>' + d.label + '</th>').join('') + '<th>Charm</th><th>Hex</th><th>Total</th></tr></thead><tbody>' +
       t.weekly.slice().reverse().map((w) => '<tr><td>' + esc(w.week) + '</td>' +
         DISCIPLINES.map((d) => '<td' + (d.key === 'strength' ? ' title="' + sessions(w.strengthSessions) + '"' : '') + '>' + num(w[d.key]) + '</td>').join('') +
-        '<td>' + (w.charm ? '+' + num(w.charm) : '–') + '</td>' +
-        '<td>' + (w.hex ? '−' + num(w.hex) : '–') + '</td>' +
+        '<td>' + (w.charm ? charmText(w.charm, '') : '–') + '</td>' +
+        '<td>' + (w.hex ? hexText(w.hex, '') : '–') + '</td>' +
         '<td><strong>' + num(w.total) + '</strong></td></tr>').join('') +
       '</tbody></table></div>' +
       '<p class="muted" style="font-size:.75rem">Strength is 25 km per session. Charms add km; hexes take km off.</p>';
@@ -164,23 +169,31 @@
 
   function renderWeekly() {
     const weeks = state.weeks;
-    const head = '<thead><tr><th>Team</th>' + weeks.map((w) => '<th>' + esc(w) + '</th>').join('') + '<th>Total</th></tr></thead>';
+    const head = '<thead><tr><th>Team</th>' + weeks.map((w) => '<th>' + esc(w) + '</th>').join('') +
+      '<th>Charms</th><th>Hexes</th><th>Total</th></tr></thead>';
     const body = state.teams.map((t) => {
       const byWeek = Object.fromEntries(t.weekly.map((w) => [w.week, w.total]));
       return '<tr><td>' + esc(t.name) + '</td>' +
         weeks.map((w) => '<td>' + (w in byWeek ? byWeek[w].toFixed(1) : '–') + '</td>').join('') +
+        '<td>' + (t.totals.charm ? charmText(t.totals.charm, '') : '–') + '</td>' +
+        '<td>' + (t.totals.hex ? hexText(t.totals.hex, '') : '–') + '</td>' +
         '<td><strong>' + t.totals.total.toFixed(1) + '</strong></td></tr>';
     }).join('');
-    $('weekly-table').innerHTML = head + '<tbody>' + body + '</tbody>';
+    const sum = (k) => state.teams.reduce((a, t) => a + t.totals[k], 0);
+    const foot = state.teams.length
+      ? '<tfoot><tr><th>All teams</th>' + weeks.map(() => '<th></th>').join('') +
+        '<th>' + charmText(sum('charm'), '') + '</th><th>' + hexText(sum('hex'), '') + '</th><th>' + sum('total').toFixed(1) + '</th></tr></tfoot>'
+      : '';
+    $('weekly-table').innerHTML = head + '<tbody>' + body + '</tbody>' + foot;
   }
 
   function renderDisciplines() {
     const added = (t) => ADDS.reduce((sum, d) => sum + Math.max(0, t.totals[d.key]), 0);
     const max = Math.max(1, ...state.teams.map(added));
     const legend = '<div class="legend">' + ADDS.map((d) => '<span><i style="background:' + d.color + '"></i>' + d.label + '</span>').join('') +
-      '<span>🧙 Hexes are taken off the total</span></div>';
+      '<span class="hex">🧙 Hexes are taken off the total</span></div>';
     const rows = state.teams.map((t) => '<div class="dbar-row"><div class="dbar-label"><span>' + esc(t.name) + '</span><span>' + km(t.totals.total) +
-      (t.totals.hex ? ' <span class="muted">(' + signedKm(t.totals.hex, '−') + ' hex)</span>' : '') + '</span></div>' +
+      (t.totals.hex ? ' <span class="hex">(' + signedKm(t.totals.hex, '−') + ' hex)</span>' : '') + '</span></div>' +
       '<div class="dbar">' + ADDS.map((d) => {
         const v = t.totals[d.key];
         return v > 0 ? '<span title="' + d.label + ': ' + v.toFixed(1) + ' km" style="width:' + ((v / max) * 100).toFixed(2) + '%;background:' + d.color + '"></span>' : '';

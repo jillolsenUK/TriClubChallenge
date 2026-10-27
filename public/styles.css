@@ -13,6 +13,8 @@
   --track: #efe5d6;
   --error-bg: #fdecec;
   --error-text: #8a1c1c;
+  --charm: #7d3c98;
+  --hex: #d0021b;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -30,6 +32,8 @@
     --track: #20382a;
     --error-bg: #3a1d20;
     --error-text: #ffb3b3;
+    --charm: #c9a0dc;
+    --hex: #ff6b6b;
   }
 }
 
@@ -43,6 +47,9 @@ body {
   flex-direction: column;
 }
 .muted { color: var(--muted); }
+.charm { color: var(--charm); font-weight: 600; }
+.hex { color: var(--hex); font-weight: 600; }
+tfoot th { border-top: 2px solid var(--border); border-bottom: 0; color: var(--text); }
 
 .topbar {
   display: flex;
@@ -131,6 +138,8 @@ button:hover { border-color: var(--accent); }
 .rank { font-weight: 700; color: var(--muted); text-align: center; }
 .team-name { font-weight: 600; overflow-wrap: anywhere; }
 .team-sub { font-size: 0.78rem; color: var(--muted); }
+.team-sub.adj { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.team-sub.adj > span { white-space: nowrap; }
 .km { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
 .bar { height: 6px; background: var(--track); border-radius: 3px; margin-top: 4px; overflow: hidden; }
 .bar > span { display: block; height: 100%; border-radius: 3px; }
