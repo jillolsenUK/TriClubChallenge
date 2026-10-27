@@ -157,12 +157,20 @@ test('store keeps history when a team is renamed', () => {
   assert.strictEqual(t.styleIndex, 0);
 });
 
-test('old version-1 stores drop their ISO-week snapshots', () => {
+test('saved weeks not named by a Sunday date are dropped on start-up', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-'));
-  fs.writeFileSync(path.join(dir, 'store.json'), JSON.stringify({ teams: {}, weeks: { '2026-W44': { a: { run: 1 } } } }));
+  const weeks = { '2026-W44': { a: { run: 1 } }, 0: { a: { run: 1 } }, 573: { a: { run: 1 } }, '2026-10-25': { a: { run: 2 } } };
+  fs.writeFileSync(path.join(dir, 'store.json'), JSON.stringify({ version: 2, teams: {}, weeks }));
   const store = new Store(dir);
-  assert.deepStrictEqual(store.data.weeks, {});
+  assert.deepStrictEqual(store.data.weeks, { '2026-10-25': { a: { run: 2 } } });
   assert.strictEqual(store.data.version, 2);
+});
+
+test('weeks before CHALLENGE_START are not shown', () => {
+  const data = { teams: {}, weeks: { '2026-10-25': {}, '2026-11-01': {}, '2026-11-08': {} } };
+  const state = computeState(data, route, { ...config, challengeStart: '2026-11-03' });
+  assert.deepStrictEqual(state.weeks, ['2026-11-01', '2026-11-08']);
+  assert.deepStrictEqual(Object.values(state.weekLabels), ['Week 1 · 1–7 Nov', 'Week 2 · 8–14 Nov']);
 });
 
 test('hexes never push a team behind the start', () => {
@@ -188,6 +196,8 @@ test('weeks start on Sunday in UK time, including across the clock change', () =
   assert.strictEqual(weekStart(new Date('2026-10-24T23:30:00Z'), tz), '2026-10-25'); // Sun 00:30 BST
   assert.strictEqual(weekStart(new Date('2026-11-28T23:59:00Z'), tz), '2026-11-22'); // Sat 23:59 GMT
   assert.strictEqual(isSunday(new Date('2026-11-29T00:01:00Z'), tz), true);
-  assert.strictEqual(weekLabel('2026-11-22', '', tz), 'w/c 22 Nov');
-  assert.strictEqual(weekLabel('2026-11-22', '2026-11-03', tz), 'Week 4 · 22 Nov');
+  assert.strictEqual(weekLabel('2026-11-22', '', tz), '22–28 Nov');
+  assert.strictEqual(weekLabel('2026-11-29', '', tz), '29 Nov – 5 Dec');
+  assert.strictEqual(weekLabel('2026-11-22', '2026-11-03', tz), 'Week 4 · 22–28 Nov');
+  assert.strictEqual(weekLabel('573', '', tz), '573');
 });

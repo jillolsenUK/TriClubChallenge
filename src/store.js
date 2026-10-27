@@ -11,7 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { weekStart, previousWeek, isSunday } = require('./weeks');
+const { weekStart, previousWeek, isSunday, isWeekKey } = require('./weeks');
 
 const FIELDS = ['run', 'cycle', 'swim', 'strength', 'charm', 'hex'];
 const VERSION = 2;
@@ -24,14 +24,13 @@ class Store {
     this.data = { version: VERSION, teams: {}, weeks: {}, resetSeen: {}, lastFetch: null, lastError: null };
     if (fs.existsSync(this.file)) {
       const saved = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-      // Version 1 saved the sheet's challenge totals under ISO week labels
-      // ("2026-W44") as if they were weekly figures. They can't be turned into
-      // real weekly figures, and the race total now comes from the sheet's total
-      // columns, so drop them.
-      if (!saved.version) {
-        for (const w of Object.keys(saved.weeks || {})) if (/^\d{4}-W\d{2}$/.test(w)) delete saved.weeks[w];
-        saved.version = VERSION;
-      }
+      // Earlier versions saved figures under other week names: ISO weeks
+      // ("2026-W44"), or values from the "Weekly Total (Calulated)" column, which
+      // was mistaken for a week number. Those aren't real weekly figures (the
+      // race total comes from the sheet's total columns), so keep only weeks
+      // named by their Sunday's date.
+      for (const w of Object.keys(saved.weeks || {})) if (!isWeekKey(w)) delete saved.weeks[w];
+      saved.version = VERSION;
       this.data = { ...this.data, ...saved };
     }
   }

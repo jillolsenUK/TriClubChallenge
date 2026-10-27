@@ -5,7 +5,7 @@
 // "Challenge Total (Calculated)" column, which we check our sums against.
 
 const { positionAt } = require('./geo');
-const { weekLabel } = require('./weeks');
+const { weekLabel, weekNumber } = require('./weeks');
 
 const DISCIPLINES = ['run', 'cycle', 'swim', 'strength'];
 const FIELDS = [...DISCIPLINES, 'charm', 'hex'];
@@ -39,7 +39,13 @@ function check(which, ours, sheet, tolerance) {
 }
 
 function computeState(data, route, config) {
-  const weekKeys = Object.keys(data.weeks).sort();
+  // Weeks before the challenge started (e.g. while the sheet was being set up) aren't shown.
+  const weekKeys = Object.keys(data.weeks)
+    .filter((w) => {
+      const n = weekNumber(w, config.challengeStart, config.timeZone);
+      return n === null || n >= 1;
+    })
+    .sort();
   const tolerance = config.validationTolerance ?? 0.5;
 
   const teams = Object.values(data.teams).map((t) => {

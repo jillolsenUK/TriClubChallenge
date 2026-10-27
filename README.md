@@ -26,7 +26,8 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
   figures still count for the week just finished; the app tells the reset has happened when the figures drop.
   Anything added to last week after the app's final read of it (say at 09:50, just before a 10:00 reset) is caught up
   on the first read of the new week from the change in the total columns. Re-reading during a week updates that week's figures.
-  Weeks are shown as `w/c 22 Nov`, or `Week 4 · 22 Nov` when `CHALLENGE_START` is set.
+  Weeks are shown by their dates, e.g. `22–28 Nov`, or `Week 4 · 22–28 Nov` when `CHALLENGE_START` is set
+  (weeks before the start date are then hidden).
 - **Checks**: on every refresh the app compares its own sums with the sheet's `Weekly Total (Calulated)` and
   `Challenge Total (Calulated)` columns (empty cells are skipped). Any team that's out by more than 0.5 km gets a ⚠️ on
   the leaderboard, a warning banner and a note in its Team pane, and the server log lists the mismatch.
@@ -55,7 +56,7 @@ npm test
 | `SHEET_GID` | `0` | Tab ID (the `gid=` number in the sheet URL) |
 | `SHEET_CSV_URL` | – | Use any CSV URL instead of the sheet |
 | `REFRESH_MINUTES` | `15` | How often to re-read the sheet (`0` = never; just show what's saved) |
-| `CHALLENGE_START` | – | `YYYY-MM-DD`; labels weeks `Week 1`, `Week 2`, … |
+| `CHALLENGE_START` | – | `YYYY-MM-DD`; labels weeks `Week 1`, `Week 2`, … and hides weeks before it |
 | `TIME_ZONE` | `Europe/London` | Time zone for the Sunday-to-Saturday weeks |
 | `VALIDATION_TOLERANCE` | `0.5` | Largest km difference from the sheet's calculated totals still counted as a match |
 | `TEAM_KEY` | `slot` | `slot` (row position) or `name` |
