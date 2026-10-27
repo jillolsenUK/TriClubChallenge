@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TriClub Challenge</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>TriClub Challenge</h1>
+      <p id="route-name" class="muted">Loading route…</p>
+    </div>
+    <div class="status">
+      <span id="last-update" class="muted"></span>
+      <button id="refresh-btn" type="button" title="Fetch the latest totals from the spreadsheet">Refresh</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="map-wrap">
+      <div id="map" aria-label="Race map"></div>
+    </section>
+
+    <aside class="panel">
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="leaderboard" class="active">Leaderboard</button>
+        <button role="tab" data-tab="team">Team</button>
+        <button role="tab" data-tab="weekly">Weekly</button>
+        <button role="tab" data-tab="disciplines">Disciplines</button>
+      </nav>
+
+      <div id="error-banner" class="error" hidden></div>
+
+      <section id="tab-leaderboard" class="tab-body">
+        <ol id="leaderboard" class="leaderboard"></ol>
+        <p id="empty" class="muted" hidden>No team totals yet. They'll appear after the first successful spreadsheet refresh.</p>
+      </section>
+
+      <section id="tab-team" class="tab-body" hidden>
+        <label class="select-row">Team
+          <select id="team-select"></select>
+        </label>
+        <div id="team-detail"></div>
+      </section>
+
+      <section id="tab-weekly" class="tab-body" hidden>
+        <p class="muted">Combined Run + Cycle + Swim + Strength per week.</p>
+        <div class="table-scroll"><table id="weekly-table"></table></div>
+      </section>
+
+      <section id="tab-disciplines" class="tab-body" hidden>
+        <div id="discipline-bars"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
