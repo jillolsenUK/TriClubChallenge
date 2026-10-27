@@ -9,6 +9,9 @@ const { Store } = require('../src/store');
 const { computeState } = require('../src/race');
 const { positionAt } = require('../src/geo');
 const { weekStart, isSunday, weekLabel } = require('../src/weeks');
+const { extractTeamImages, saveThumbnails } = require('../src/images');
+const { zipSync, strToU8 } = require('fflate');
+const sharp = require('sharp');
 
 const config = {
   timeZone: 'Europe/London',
@@ -59,6 +62,19 @@ test('extractTeams reads the weekly and total columns of the real sheet layout',
   assert.strictEqual(lycra.sheetChallengeTotal, 573);
   assert.strictEqual(lycra.sheetWeeklyTotal, null); // that column is empty
   assert.strictEqual(teams[3].sheetChallengeTotal, null);
+});
+
+test('the reordered Sheet1 columns (charm/hex totals moved, week columns reordered) read the same', () => {
+  const csv = [
+    'Team Name,Run-total,Cycle-Total,Swim-Total,Strength-total,Charm-total,Hex-total,Run-week,Cycle-week,swim-week,Strength-week,Charm-week,Hex-Week,Weekly Total (Calulated),Challenge Total (Calulated)',
+    'Sleighing it in Lycra,50,300,3,3,10,80,20,100,1,2,5,30,231,583',
+  ].join('\n');
+  const [t] = extractTeams(parseCsv(csv)).teams;
+  assert.deepStrictEqual(t.total, { run: 50, cycle: 300, swim: 3, strength: 3, charm: 10, hex: 80 });
+  assert.deepStrictEqual(t.weekly, { run: 20, cycle: 100, swim: 1, strength: 2, charm: 5, hex: 30 });
+  const store = tmpStore();
+  store.applyRows([t], new Date('2026-11-26T12:00:00Z'));
+  assert.deepStrictEqual(computeState(store.data, route, config).validation.mismatches, []);
 });
 
 test('km use Run×4, Cycle×1, Swim×26, Strength×25, +Charm, −Hex and match the sheet', () => {
@@ -220,4 +236,53 @@ test('weeks start on Sunday in UK time, including across the clock change', () =
   assert.strictEqual(weekLabel('2026-11-29', '', tz), '29 Nov – 5 Dec');
   assert.strictEqual(weekLabel('2026-11-22', '2026-11-03', tz), 'Week 4 · 22–28 Nov');
   assert.strictEqual(weekLabel('573', '', tz), '573');
+});
+
+// A minimal .xlsx like Google's export: an "Images" tab with team names in row 1
+// and pictures anchored to the cells below them.
+async function workbookWithPictures() {
+  const png = (r, g, b) => sharp({ create: { width: 300, height: 300, channels: 3, background: { r, g, b } } }).png().toBuffer();
+  const [red, blue] = await Promise.all([png(200, 0, 0), png(0, 0, 200)]);
+  const rel = (id, type, target) => `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/${type}" Target="${target}"/>`;
+  const rels = (...r) => `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${r.join('')}</Relationships>`;
+  const anchor = (col, row, id) =>
+    `<xdr:oneCellAnchor><xdr:from><xdr:col>${col}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>` +
+    `<xdr:ext cx="1" cy="1"/><xdr:pic><xdr:blipFill><a:blip r:embed="${id}"/></xdr:blipFill></xdr:pic></xdr:oneCellAnchor>`;
+  return Buffer.from(zipSync({
+    'xl/workbook.xml': strToU8('<workbook xmlns:r="r"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/><sheet name="Images" sheetId="3" r:id="rId3"/></sheets></workbook>'),
+    'xl/_rels/workbook.xml.rels': strToU8(rels(rel('rId1', 'worksheet', 'worksheets/sheet1.xml'), rel('rId3', 'worksheet', 'worksheets/sheet3.xml'))),
+    'xl/sharedStrings.xml': strToU8("<sst><si><t>Team 1</t></si><si><t>Lapping&apos; Around the Christmas Tree</t></si><si><r><t>Sleighing it </t></r><r><t>in Lycra</t></r></si></sst>"),
+    'xl/worksheets/sheet1.xml': strToU8('<worksheet><sheetData/></worksheet>'),
+    'xl/worksheets/sheet3.xml': strToU8('<worksheet xmlns:r="r"><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="G1" t="s"><v>2</v></c></row></sheetData><drawing r:id="rId1"/></worksheet>'),
+    'xl/worksheets/_rels/sheet3.xml.rels': strToU8(rels(rel('rId1', 'drawing', '../drawings/drawing3.xml'))),
+    'xl/drawings/drawing3.xml': strToU8(`<xdr:wsDr xmlns:xdr="x" xmlns:a="a" xmlns:r="r">${anchor(1, 1, 'rId1')}${anchor(6, 1, 'rId2')}${anchor(9, 1, 'rId1')}${anchor(6, 0, 'rId1')}</xdr:wsDr>`),
+    'xl/drawings/_rels/drawing3.xml.rels': strToU8(rels(rel('rId1', 'image', '../media/image1.png'), rel('rId2', 'image', '../media/image2.png'))),
+    'xl/media/image1.png': new Uint8Array(red),
+    'xl/media/image2.png': new Uint8Array(blue),
+  }));
+}
+
+test('team pictures are read from the Images tab and matched to the header above them', async () => {
+  const pictures = extractTeamImages(await workbookWithPictures(), 'Images');
+  // Team 1 has no picture; the picture in column J has no header; the one over the header row itself is ignored.
+  assert.deepStrictEqual(pictures.map((p) => p.name).sort(), ["Lapping' Around the Christmas Tree", 'Sleighing it in Lycra']);
+  assert.strictEqual(extractTeamImages(await workbookWithPictures(), 'Pictures'), null);
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-img-'));
+  const saved = await saveThumbnails(pictures, dir);
+  const meta = await sharp(path.join(dir, saved.sleighingitinlycra.file)).metadata();
+  assert.deepStrictEqual([meta.format, meta.width, meta.height], ['webp', 128, 128]);
+
+  // Teams with a picture get it (matched by name); the rest keep their emoji markers.
+  const data = {
+    teams: {
+      'slot:2': { key: 'slot:2', name: "Lapping' Around the Christmas Tree", styleIndex: 1, previousNames: [] },
+      'slot:3': { key: 'slot:3', name: 'Team 3', styleIndex: 2, previousNames: [] },
+    },
+    weeks: {},
+    images: saved,
+  };
+  const byName = Object.fromEntries(computeState(data, route, config).teams.map((t) => [t.name, t.image]));
+  assert.strictEqual(byName["Lapping' Around the Christmas Tree"], 'team-images/' + saved.lappingaroundthechristmastree.file);
+  assert.strictEqual(byName['Team 3'], null);
 });

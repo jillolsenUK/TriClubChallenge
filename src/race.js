@@ -7,6 +7,8 @@
 const { positionAt } = require('./geo');
 const { weekLabel, weekNumber } = require('./weeks');
 
+const normName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
 const DISCIPLINES = ['run', 'cycle', 'swim', 'strength'];
 const FIELDS = [...DISCIPLINES, 'charm', 'hex'];
 
@@ -77,6 +79,8 @@ function computeState(data, route, config) {
       name: t.name,
       previousNames: t.previousNames,
       styleIndex: t.styleIndex,
+      // The team's picture from the Images tab, matched by its current name.
+      image: data.images?.[normName(t.name)] ? 'team-images/' + data.images[normName(t.name)].file : null,
       totals,
       thisWeek,
       weekly,

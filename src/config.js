@@ -12,9 +12,13 @@ module.exports = {
   // The banner message: cell A2 under a "Message" header, on the first of these tabs that has one.
   messageCsvUrls: env.MESSAGE_CSV_URL
     ? [env.MESSAGE_CSV_URL]
-    : (env.MESSAGE_SHEET ? [env.MESSAGE_SHEET] : ['Sheet2', 'Sheet 2']).map(
+    : (env.MESSAGE_SHEET ? [env.MESSAGE_SHEET] : ['Message', 'Sheet2', 'Sheet 2']).map(
         (tab) => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`,
       ),
+  // Team pictures: the "Images" tab of the workbook's .xlsx export (CSV leaves pictures out).
+  workbookXlsxUrl: env.IMAGES_XLSX_URL || `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`,
+  imagesSheet: env.IMAGES_SHEET || 'Images',
+  imagesRefreshMinutes: num(env.IMAGES_REFRESH_MINUTES, 60),
   // Azure App Service keeps /home across restarts and deployments.
   dataDir: env.DATA_DIR || (env.WEBSITE_SITE_NAME ? '/home/data' : path.join(__dirname, '..', 'data')),
   refreshMinutes: num(env.REFRESH_MINUTES, 15),

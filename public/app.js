@@ -50,6 +50,11 @@
   const teamIcon = (team, size) => {
     const s = styleFor(team);
     const ring = Math.max(3, Math.round(size / 8));
+    // A team picture from the sheet, inside the team's coloured ring; otherwise its Christmas emoji.
+    if (team.image) {
+      return '<span class="xmas-badge photo" role="img" aria-label="' + esc(team.name) + ' team picture" style="width:' + size + 'px;height:' + size +
+        'px;border-width:' + ring + 'px;border-color:' + s.color + '"><img src="' + esc(team.image) + '" alt="" loading="lazy"></span>';
+    }
     return '<span class="xmas-badge" role="img" aria-label="' + s.shape.name + '" style="width:' + size + 'px;height:' + size +
       'px;border-width:' + ring + 'px;border-color:' + s.color + ';font-size:' + Math.round(size * 0.55) + 'px">' + s.shape.emoji + '</span>';
   };
@@ -106,7 +111,8 @@
     const seen = new Set();
     for (const t of state.teams) {
       seen.add(t.key);
-      const icon = L.divIcon({ className: 'team-icon', html: teamIcon(t, 34), iconSize: [34, 34], iconAnchor: [17, 17] });
+      const px = t.image ? 44 : 34;
+      const icon = L.divIcon({ className: 'team-icon', html: teamIcon(t, px), iconSize: [px, px], iconAnchor: [px / 2, px / 2] });
       const tip = '<strong>' + esc(t.name) + '</strong><br>#' + t.rank + ' · ' + km(t.distanceKm) + ' (' + pct(t.progress) + ')';
       let m = markers[t.key];
       if (!m) {
@@ -170,7 +176,7 @@
     const s = styleFor(t);
     const stat = (label, value) => '<div class="stat"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
     let html = '<div class="detail-head">' + teamIcon(t, 40) + '<div><h2>' + esc(t.name) + '</h2>' +
-      '<div class="muted" style="font-size:.8rem">' + esc(s.shape.name) + ' marker' +
+      '<div class="muted" style="font-size:.8rem">' + (t.image ? 'Team picture' : esc(s.shape.name) + ' marker') +
       (formerNames(t).length ? ' · formerly ' + formerNames(t).map(esc).join(', ') : '') + '</div></div></div>';
     html += '<div class="bar" style="height:10px"><span style="width:' + (t.progress * 100).toFixed(2) + '%;background:' + s.color + '"></span></div>';
     html += '<div class="stats">' +

@@ -5,6 +5,7 @@ const config = require('./config');
 const { Store } = require('./store');
 const { fetchSheet, fetchMessage, extractTeams } = require('./sheet');
 const { computeState } = require('./race');
+const { fetchWorkbook, extractTeamImages, saveThumbnails } = require('./images');
 
 const route = require('../route/route.json');
 const store = new Store(config.dataDir, config.timeZone);
@@ -43,6 +44,23 @@ async function refresh() {
   return refreshing;
 }
 
+// Team pictures change rarely and the workbook download is large, so they're
+// refreshed less often than the figures.
+const imagesDir = path.join(config.dataDir, 'images');
+let lastImages = 0;
+async function refreshImages() {
+  lastImages = Date.now();
+  try {
+    const pictures = extractTeamImages(await fetchWorkbook());
+    if (pictures === null) return console.warn(`No "${config.imagesSheet}" tab found for team pictures`);
+    store.data.images = await saveThumbnails(pictures, imagesDir);
+    store.save();
+    console.log(`Team pictures: ${pictures.map((p) => p.name).join(', ') || 'none'}`);
+  } catch (err) {
+    console.warn('Team pictures refresh failed:', err.message);
+  }
+}
+
 // Serve index.html with a per-deploy version on its CSS/JS links, so browsers
 // fetch fresh copies after every deploy instead of reusing old cached ones.
 const version = Date.now().toString(36);
@@ -56,6 +74,8 @@ app.get(['/', '/index.html'], sendIndex);
 // No max-age on the app's own files: browsers revalidate (cheap, via ETag) so a
 // new deploy shows up on the next page load.
 app.use(express.static(path.join(__dirname, '..', 'public')));
+// Picture files are named by a hash of their content, so they can be cached for good.
+app.use('/team-images', express.static(imagesDir, { maxAge: '365d', immutable: true }));
 app.use('/vendor/leaflet', express.static(path.dirname(require.resolve('leaflet/dist/leaflet.js')), { maxAge: '7d' }));
 
 app.get('/api/route', (req, res) => {
@@ -74,7 +94,7 @@ app.post('/api/refresh', async (req, res) => {
     return res.status(429).json({ error: 'Refreshed less than a minute ago' });
   }
   lastManualRefresh = Date.now();
-  await refresh();
+  await Promise.all([refresh(), Date.now() - lastImages > 60 * 1000 ? refreshImages() : null]);
   res.json(computeState(store.data, route, config));
 });
 
@@ -86,5 +106,7 @@ app.listen(config.port, () => {
   if (config.refreshMinutes > 0) {
     refresh();
     setInterval(refresh, config.refreshMinutes * 60 * 1000);
+    refreshImages();
+    if (config.imagesRefreshMinutes > 0) setInterval(refreshImages, config.imagesRefreshMinutes * 60 * 1000);
   }
 });
