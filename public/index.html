@@ -36,6 +36,7 @@
       </nav>
 
       <div id="error-banner" class="error" hidden></div>
+      <div id="check-banner" class="warn" hidden></div>
 
       <section id="tab-leaderboard" class="tab-body">
         <ol id="leaderboard" class="leaderboard"></ol>
@@ -50,8 +51,8 @@
       </section>
 
       <section id="tab-weekly" class="tab-body" hidden>
-        <p class="muted">Each week's total: Run + Cycle + Swim + Strength (25 km per session) + Charms − Hexes.</p>
-        <div class="table-scroll"><table id="weekly-table"></table></div>
+        <p id="weekly-note" class="muted" style="font-size:.8rem"></p>
+        <div class="table-scroll"><table id="weekly-table" class="compact"></table></div>
       </section>
 
       <section id="tab-disciplines" class="tab-body" hidden>

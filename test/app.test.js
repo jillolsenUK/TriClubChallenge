@@ -6,23 +6,31 @@ const path = require('path');
 
 const { parseCsv, extractTeams, toNumber } = require('../src/sheet');
 const { Store } = require('../src/store');
-const { computeState, isoWeekLabel } = require('../src/race');
+const { computeState } = require('../src/race');
 const { positionAt } = require('../src/geo');
+const { weekStart, isSunday, weekLabel } = require('../src/weeks');
 
 const config = {
-  totalsMode: 'weekly',
+  timeZone: 'Europe/London',
   challengeStart: '',
-  scale: { run: 1, cycle: 1, swim: 1, strength: 1 },
-};
-const liveConfig = {
-  ...config,
-  scale: { ...config.scale, strength: 25 },
+  validationTolerance: 0.5,
+  scale: { run: 4, cycle: 1, swim: 26, strength: 25 },
 };
 const route = {
   name: 'Test',
-  totalKm: 100,
-  points: [[0, 0, 0], [0, 1, 50], [0, 2, 100]],
+  totalKm: 5000,
+  points: [[0, 0, 0], [0, 1, 2500], [0, 2, 5000]],
 };
+const tmpStore = () => new Store(fs.mkdtempSync(path.join(os.tmpdir(), 'tri-')));
+
+// Header row and the two filled-in teams from "Tri before christmas Output November 26.xlsx".
+const SHEET = [
+  'Team Name,Run-total,Cycle-Total,Swim-Total,Strength-total,Run-week,Cycle-week,Strength-week,swim-week,Charm-total,Charm-week,Hex-total,Hex-Week,Weekly Total (Calulated),Challenge Total (Calulated)',
+  'Team 1,,,,,,,,,,,,,,0',
+  'Team 8,75,600,5,6,,,,,,,150,150,,1030',
+  'Sleighing it in Lycra,50,300,3,3,50,300,3,3,,,80,80,,573',
+  'Team 11,,,,,,,,,,,,,,',
+].join('\n');
 
 test('parseCsv handles quotes, commas and CRLF', () => {
   const rows = parseCsv('a,"b, c","say ""hi"""\r\n1,2,3\n');
@@ -35,103 +43,121 @@ test('toNumber strips units and thousands separators', () => {
   assert.strictEqual(toNumber('n/a'), 0);
 });
 
-test('extractTeams finds the header row and Run/Cycle/Swim/Strength total columns', () => {
-  const csv = [
-    'Club challenge,,,,,',
-    'Team,Run,Run-Total,Cycle-Total,Swim-Total,Strength-total',
-    'Red Rockets,1,10,20,3,4',
-    'Blue Whales,2,"1,000",0,0,1',
-    'Total,,,,,',
-  ].join('\n');
-  const { teams } = extractTeams(parseCsv(csv), '2026-W44');
-  assert.strictEqual(teams.length, 2);
-  assert.deepStrictEqual(teams[0], { key: 'slot:1', name: 'Red Rockets', week: '2026-W44', run: 10, cycle: 20, swim: 3, strength: 4, charm: 0, hex: 0 });
-  assert.strictEqual(teams[1].run, 1000);
+test('extractTeams reads the weekly and total columns of the real sheet layout', () => {
+  const { teams } = extractTeams(parseCsv(SHEET));
+  assert.deepStrictEqual(teams.map((t) => t.name), ['Team 1', 'Team 8', 'Sleighing it in Lycra', 'Team 11']);
+  const lycra = teams[2];
+  assert.strictEqual(lycra.key, 'slot:3');
+  assert.deepStrictEqual(lycra.total, { run: 50, cycle: 300, swim: 3, strength: 3, charm: 0, hex: 80 });
+  assert.deepStrictEqual(lycra.weekly, { run: 50, cycle: 300, swim: 3, strength: 3, charm: 0, hex: 80 });
+  assert.strictEqual(lycra.sheetChallengeTotal, 573);
+  assert.strictEqual(lycra.sheetWeeklyTotal, null); // that column is empty
+  assert.strictEqual(teams[3].sheetChallengeTotal, null);
 });
 
-test('extractTeams uses a Week column when present', () => {
-  const csv = 'Week,Team,Run-Total,Cycle-Total,Swim-Total,Strength-Total\n1,A,1,1,1,1\n1,B,2,2,2,2\n2,A,3,3,3,3\n';
-  const { teams } = extractTeams(parseCsv(csv), 'ignored');
-  assert.deepStrictEqual(teams.map((t) => [t.week, t.key, t.name]), [['1', 'slot:1', 'A'], ['1', 'slot:2', 'B'], ['2', 'slot:1', 'A']]);
+test('km use Run×4, Cycle×1, Swim×26, Strength×25, +Charm, −Hex and match the sheet', () => {
+  const store = tmpStore();
+  store.applyRows(extractTeams(parseCsv(SHEET)).teams, new Date('2026-11-26T12:00:00Z'));
+  const state = computeState(store.data, route, config);
+  const byName = Object.fromEntries(state.teams.map((t) => [t.name, t]));
+
+  const t8 = byName['Team 8'];
+  assert.deepStrictEqual([t8.totals.run, t8.totals.cycle, t8.totals.swim, t8.totals.strength], [300, 600, 130, 150]);
+  assert.strictEqual(t8.totals.strengthSessions, 6);
+  assert.strictEqual(t8.totals.hex, 150);
+  assert.strictEqual(t8.totals.total, 1030);
+  assert.strictEqual(byName['Sleighing it in Lycra'].totals.total, 573);
+  assert.strictEqual(byName['Sleighing it in Lycra'].thisWeek.total, 573);
+
+  // Three teams have a calculated challenge total; all three match.
+  assert.strictEqual(state.validation.checked, 3);
+  assert.deepStrictEqual(state.validation.mismatches, []);
+  assert.deepStrictEqual(state.teams.map((t) => t.name).slice(0, 2), ['Team 8', 'Sleighing it in Lycra']);
 });
 
-test('store sums weekly totals and keeps history when a team is renamed', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-'));
-  const store = new Store(dir);
-  store.applyRows([{ key: 'slot:1', name: 'Team One', week: 'W1', run: 10, cycle: 20, swim: 1, strength: 2 }]);
-  store.applyRows([{ key: 'slot:1', name: 'Team One', week: 'W1', run: 12, cycle: 20, swim: 1, strength: 2 }]); // same week updated
-  store.applyRows([{ key: 'slot:1', name: 'Speedy', week: 'W2', run: 5, cycle: 0, swim: 0, strength: 0 }]);
+test('a total that disagrees with the sheet is reported', () => {
+  const store = tmpStore();
+  const wrong = SHEET.replace(',150,150,,1030', ',150,150,,999');
+  store.applyRows(extractTeams(parseCsv(wrong)).teams, new Date('2026-11-26T12:00:00Z'));
+  const { validation } = computeState(store.data, route, config);
+  assert.deepStrictEqual(validation.mismatches, [{ team: 'Team 8', which: 'challenge', ours: 1030, sheet: 999, ok: false }]);
+});
+
+test('weekly figures are saved per Sunday–Saturday week; the race total comes from the total columns', () => {
+  const store = tmpStore();
+  const row = (week, total) => ({
+    key: 'slot:1', name: 'A',
+    weekly: { run: week, cycle: 0, swim: 0, strength: 0, charm: 0, hex: 0 },
+    total: { run: total, cycle: 0, swim: 0, strength: 0, charm: 0, hex: 0 },
+  });
+  store.applyRows([row(5, 5)], new Date('2026-11-21T10:00:00Z')); // Sat: week of Sun 15 Nov
+  store.applyRows([row(8, 8)], new Date('2026-11-21T22:00:00Z')); // Sat night, same week
+  store.applyRows([row(0, 8)], new Date('2026-11-22T09:00:00Z')); // Sun: sheet reset
+  store.applyRows([row(2, 10)], new Date('2026-11-24T09:00:00Z')); // Tue
+
+  const t = computeState(store.data, route, config).teams[0];
+  assert.deepStrictEqual(t.weekly.map((w) => [w.week, w.raw.run, w.run]), [['2026-11-15', 8, 32], ['2026-11-22', 2, 8]]);
+  assert.strictEqual(t.totals.total, 40);
+  assert.strictEqual(t.thisWeek.total, 8);
+});
+
+test("on Sunday, figures the sheet hasn't zeroed yet still count for last week", () => {
+  const store = tmpStore();
+  const row = (run) => ({ key: 'slot:1', name: 'A', weekly: { run, cycle: 0, swim: 0, strength: 0, charm: 0, hex: 0 }, total: null });
+  store.applyRows([row(8)], new Date('2026-11-21T20:00:00Z')); // Sat
+  store.applyRows([row(9)], new Date('2026-11-22T08:00:00Z')); // Sun, before reset (late entry)
+  store.applyRows([row(0)], new Date('2026-11-22T12:00:00Z')); // Sun, reset
+  store.applyRows([row(3)], new Date('2026-11-22T18:00:00Z')); // Sun, new week's first entry
+  const { data } = store;
+  assert.strictEqual(data.weeks['2026-11-15']['slot:1'].run, 9);
+  assert.strictEqual(data.weeks['2026-11-22']['slot:1'].run, 3);
+  // No total columns: the race total is the saved weeks added up.
+  assert.strictEqual(computeState(data, route, config).teams[0].totals.total, (9 + 3) * 4);
+});
+
+test('store keeps history when a team is renamed', () => {
+  const store = tmpStore();
+  const row = (name) => ({ key: 'slot:1', name, weekly: {}, total: { run: 1 } });
+  store.applyRows([row('Team 9')]);
+  store.applyRows([row('Sleighing it in Lycra')]);
   store.save();
-
-  const reloaded = new Store(dir);
-  const state = computeState(reloaded.data, route, config);
-  const t = state.teams[0];
-  assert.strictEqual(t.name, 'Speedy');
-  assert.deepStrictEqual(t.previousNames, ['Team One']);
-  assert.strictEqual(t.totals.total, 12 + 20 + 1 + 2 + 5);
-  assert.strictEqual(t.weekly.length, 2);
-  assert.strictEqual(t.distanceKm, 40);
-  assert.deepStrictEqual(t.position, { lat: 0, lon: 0.8 });
+  const t = new Store(path.dirname(store.file)).data.teams['slot:1'];
+  assert.strictEqual(t.name, 'Sleighing it in Lycra');
+  assert.deepStrictEqual(t.previousNames, ['Team 9']);
+  assert.strictEqual(t.styleIndex, 0);
 });
 
-test('cumulative mode uses only the latest week, and distance is capped at the finish', () => {
-  const data = {
-    teams: { a: { key: 'a', name: 'A', styleIndex: 0, previousNames: [] } },
-    weeks: { 'Week 9': { a: { run: 50, cycle: 0, swim: 0, strength: 0 } }, 'Week 10': { a: { run: 150, cycle: 0, swim: 0, strength: 0 } } },
-  };
-  const state = computeState(data, route, { ...config, totalsMode: 'cumulative' });
-  assert.deepStrictEqual(state.weeks, ['Week 9', 'Week 10']);
-  assert.strictEqual(state.teams[0].totals.total, 150);
-  assert.strictEqual(state.teams[0].distanceKm, 100);
-  assert.strictEqual(state.teams[0].finished, true);
-});
-
-test('positionAt interpolates and clamps', () => {
-  assert.deepStrictEqual(positionAt(route, -5), [0, 0]);
-  assert.deepStrictEqual(positionAt(route, 75), [0, 1.5]);
-  assert.deepStrictEqual(positionAt(route, 500), [0, 2]);
-});
-
-test('isoWeekLabel', () => {
-  assert.strictEqual(isoWeekLabel(new Date('2026-10-27T12:00:00Z')), '2026-W44');
-  assert.strictEqual(isoWeekLabel(new Date('2027-01-01T12:00:00Z')), '2026-W53');
-});
-
-test('strength sessions are worth 25 km, charms add and hexes subtract', () => {
-  const csv = 'Team,Run-Total,Cycle-Total,Swim-Total,Strength-Total,Charm,Hex\nA,10,20,5,4,30,-15\n';
-  const { teams } = extractTeams(parseCsv(csv), 'W1');
-  assert.deepStrictEqual(teams[0], { key: 'slot:1', name: 'A', week: 'W1', run: 10, cycle: 20, swim: 5, strength: 4, charm: 30, hex: 15 });
-
+test('old version-1 stores drop their ISO-week snapshots', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-'));
+  fs.writeFileSync(path.join(dir, 'store.json'), JSON.stringify({ teams: {}, weeks: { '2026-W44': { a: { run: 1 } } } }));
   const store = new Store(dir);
-  store.applyRows(teams);
-  store.applyRows([{ key: 'slot:1', name: 'A', week: 'W2', run: 0, cycle: 0, swim: 0, strength: 1, charm: 0, hex: 5 }]);
-  const t = computeState(store.data, { ...route, totalKm: 1000 }, liveConfig).teams[0];
-  assert.deepStrictEqual(t.weekly.map((w) => w.total), [10 + 20 + 5 + 100 + 30 - 15, 25 - 5]);
-  assert.strictEqual(t.weekly[0].strength, 100);
-  assert.strictEqual(t.totals.strengthSessions, 5);
-  assert.strictEqual(t.totals.charm, 30);
-  assert.strictEqual(t.totals.hex, 20);
-  assert.strictEqual(t.totals.total, 150 + 20);
+  assert.deepStrictEqual(store.data.weeks, {});
+  assert.strictEqual(store.data.version, 2);
 });
 
 test('hexes never push a team behind the start', () => {
   const data = {
-    teams: { a: { key: 'a', name: 'A', styleIndex: 0, previousNames: [] } },
-    weeks: { W1: { a: { run: 5, cycle: 0, swim: 0, strength: 0, charm: 0, hex: 50 } } },
+    teams: { a: { key: 'a', name: 'A', styleIndex: 0, previousNames: [], latest: { total: { run: 1, hex: 50 } } } },
+    weeks: {},
   };
-  const t = computeState(data, route, liveConfig).teams[0];
-  assert.strictEqual(t.totals.total, -45);
+  const t = computeState(data, route, config).teams[0];
+  assert.strictEqual(t.totals.total, -46);
   assert.strictEqual(t.distanceKm, 0);
-  assert.deepStrictEqual(t.position, { lat: 0, lon: 0 });
 });
 
-test('weeks saved before charms and hexes existed still add up', () => {
-  const data = {
-    teams: { a: { key: 'a', name: 'A', styleIndex: 0, previousNames: [] } },
-    weeks: { W1: { a: { run: 5, cycle: 5, swim: 0, strength: 2 } } },
-  };
-  const t = computeState(data, route, liveConfig).teams[0];
-  assert.strictEqual(t.totals.total, 60);
-  assert.strictEqual(t.totals.charm, 0);
+test('positionAt interpolates and clamps', () => {
+  const r = { totalKm: 100, points: [[0, 0, 0], [0, 1, 50], [0, 2, 100]] };
+  assert.deepStrictEqual(positionAt(r, -5), [0, 0]);
+  assert.deepStrictEqual(positionAt(r, 75), [0, 1.5]);
+  assert.deepStrictEqual(positionAt(r, 500), [0, 2]);
+});
+
+test('weeks start on Sunday in UK time, including across the clock change', () => {
+  const tz = 'Europe/London';
+  assert.strictEqual(weekStart(new Date('2026-10-24T22:59:00Z'), tz), '2026-10-18'); // Sat 23:59 BST
+  assert.strictEqual(weekStart(new Date('2026-10-24T23:30:00Z'), tz), '2026-10-25'); // Sun 00:30 BST
+  assert.strictEqual(weekStart(new Date('2026-11-28T23:59:00Z'), tz), '2026-11-22'); // Sat 23:59 GMT
+  assert.strictEqual(isSunday(new Date('2026-11-29T00:01:00Z'), tz), true);
+  assert.strictEqual(weekLabel('2026-11-22', '', tz), 'w/c 22 Nov');
+  assert.strictEqual(weekLabel('2026-11-22', '2026-11-03', tz), 'Week 4 · 22 Nov');
 });

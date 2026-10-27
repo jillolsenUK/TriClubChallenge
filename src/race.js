@@ -1,53 +1,67 @@
-// Turns stored weekly totals into race standings along the route.
+// Turns stored sheet values into km and race standings along the route.
+//
+// km = Run×4 + Cycle + Swim×26 + Strength×25 + Charm − Hex
+// (multipliers from config.scale), the same formula as the sheet's
+// "Challenge Total (Calculated)" column, which we check our sums against.
 
 const { positionAt } = require('./geo');
+const { weekLabel } = require('./weeks');
 
 const DISCIPLINES = ['run', 'cycle', 'swim', 'strength'];
-const SUMMED = [...DISCIPLINES, 'strengthSessions', 'charm', 'hex', 'total'];
-const DAY_MS = 24 * 60 * 60 * 1000;
+const FIELDS = [...DISCIPLINES, 'charm', 'hex'];
 
-function isoWeekLabel(date) {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - day);
-  const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
-  const week = Math.ceil(((d - yearStart) / DAY_MS + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
-}
-
-function currentWeekLabel(config, now = new Date()) {
-  if (config.challengeStart) {
-    const start = new Date(config.challengeStart + 'T00:00:00Z');
-    if (!isNaN(start)) return `Week ${Math.max(1, Math.floor((now - start) / (7 * DAY_MS)) + 1)}`;
+// Raw sheet values -> km for each field plus the combined total.
+function toKm(raw, scale) {
+  const out = { raw: {} };
+  let sum = 0;
+  for (const k of FIELDS) out.raw[k] = raw?.[k] || 0;
+  for (const k of DISCIPLINES) {
+    out[k] = out.raw[k] * scale[k];
+    sum += out[k];
   }
-  return isoWeekLabel(now);
+  out.charm = out.raw.charm;
+  out.hex = out.raw.hex;
+  out.strengthSessions = out.raw.strength;
+  out.total = sum + out.charm - out.hex;
+  return out;
 }
 
-// Natural sort so "Week 10" comes after "Week 9".
-const weekCompare = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+const addKm = (a, b) => {
+  const out = { raw: {} };
+  for (const k of FIELDS) out.raw[k] = (a.raw[k] || 0) + (b.raw[k] || 0);
+  for (const k of [...FIELDS, 'strengthSessions', 'total']) out[k] = (a[k] || 0) + (b[k] || 0);
+  return out;
+};
+
+function check(which, ours, sheet, tolerance) {
+  if (sheet == null) return null;
+  return { which, ours, sheet, ok: Math.abs(ours - sheet) <= tolerance };
+}
 
 function computeState(data, route, config) {
-  const weekLabels = Object.keys(data.weeks).sort(weekCompare);
+  const weekKeys = Object.keys(data.weeks).sort();
+  const tolerance = config.validationTolerance ?? 0.5;
+
   const teams = Object.values(data.teams).map((t) => {
-    const weekly = weekLabels
+    const weekly = weekKeys
       .filter((w) => data.weeks[w][t.key])
       .map((w) => {
         const e = data.weeks[w][t.key];
-        const row = { week: w, updatedAt: e.updatedAt, strengthSessions: e.strength || 0 };
-        let sum = 0;
-        for (const k of DISCIPLINES) {
-          row[k] = (e[k] || 0) * config.scale[k];
-          sum += row[k];
-        }
-        row.charm = e.charm || 0;
-        row.hex = e.hex || 0;
-        row.total = sum + row.charm - row.hex;
-        return row;
+        return { week: w, updatedAt: e.updatedAt, sheetWeeklyTotal: e.sheetWeeklyTotal ?? null, ...toKm(e, config.scale) };
       });
 
-    const totals = Object.fromEntries(SUMMED.map((k) => [k, 0]));
-    const counted = config.totalsMode === 'cumulative' ? weekly.slice(-1) : weekly;
-    for (const w of counted) for (const k of SUMMED) totals[k] += w[k];
+    // The sheet's challenge-total columns are the race total. Without them,
+    // fall back to adding up the saved weeks.
+    const latest = t.latest || {};
+    const totals = latest.total
+      ? toKm(latest.total, config.scale)
+      : weekly.reduce(addKm, toKm(null, config.scale));
+    const thisWeek = toKm(latest.weekly, config.scale);
+
+    const checks = [
+      check('week', thisWeek.total, latest.sheetWeeklyTotal, tolerance),
+      check('challenge', totals.total, latest.sheetChallengeTotal, tolerance),
+    ].filter(Boolean);
 
     // Hexes can push a team backwards, but never behind the start line.
     const distanceKm = Math.min(Math.max(totals.total, 0), route.totalKm);
@@ -58,7 +72,9 @@ function computeState(data, route, config) {
       previousNames: t.previousNames,
       styleIndex: t.styleIndex,
       totals,
+      thisWeek,
       weekly,
+      checks,
       distanceKm,
       remainingKm: route.totalKm - distanceKm,
       progress: route.totalKm ? distanceKm / route.totalKm : 0,
@@ -68,21 +84,24 @@ function computeState(data, route, config) {
     };
   });
 
-  teams.sort((a, b) => b.totals.total - a.totals.total || a.name.localeCompare(b.name));
+  teams.sort((a, b) => b.totals.total - a.totals.total || a.name.localeCompare(b.name, undefined, { numeric: true }));
   const leader = teams[0] ? teams[0].distanceKm : 0;
   teams.forEach((t, i) => {
     t.rank = i + 1;
     t.behindLeaderKm = leader - t.distanceKm;
   });
 
+  const mismatches = teams.flatMap((t) => t.checks.filter((c) => !c.ok).map((c) => ({ team: t.name, ...c })));
   return {
     route: { name: route.name, totalKm: route.totalKm },
-    weeks: weekLabels,
+    weeks: weekKeys,
+    weekLabels: Object.fromEntries(weekKeys.map((w) => [w, weekLabel(w, config.challengeStart, config.timeZone)])),
+    scale: config.scale,
     teams,
+    validation: { checked: teams.reduce((n, t) => n + t.checks.length, 0), mismatches },
     lastFetch: data.lastFetch,
     lastError: data.lastError,
-    totalsMode: config.totalsMode,
   };
 }
 
-module.exports = { computeState, currentWeekLabel, isoWeekLabel, weekCompare };
+module.exports = { computeState, toKm };

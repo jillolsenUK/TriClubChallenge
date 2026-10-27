@@ -4,10 +4,10 @@ const express = require('express');
 const config = require('./config');
 const { Store } = require('./store');
 const { fetchSheet, extractTeams } = require('./sheet');
-const { computeState, currentWeekLabel } = require('./race');
+const { computeState } = require('./race');
 
 const route = require('../route/route.json');
-const store = new Store(config.dataDir);
+const store = new Store(config.dataDir, config.timeZone);
 
 let refreshing = null;
 let lastManualRefresh = 0;
@@ -17,9 +17,13 @@ async function refresh() {
   refreshing = (async () => {
     try {
       const rows = await fetchSheet();
-      const { teams } = extractTeams(rows, currentWeekLabel(config));
+      const { teams } = extractTeams(rows);
       store.applyRows(teams);
-      console.log(`Refreshed ${teams.length} team rows`);
+      const { validation } = computeState(store.data, route, config);
+      for (const m of validation.mismatches) {
+        console.warn(`Check failed: ${m.team} ${m.which} total is ${m.ours} km here but ${m.sheet} in the sheet`);
+      }
+      console.log(`Refreshed ${teams.length} teams; ${validation.checked - validation.mismatches.length}/${validation.checked} totals match the sheet`);
     } catch (err) {
       store.data.lastError = { message: err.message, at: new Date().toISOString() };
       console.error('Refresh failed:', err.message);

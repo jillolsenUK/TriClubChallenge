@@ -32,7 +32,15 @@
   // Charm totals in purple, hex totals in red.
   const charmText = (n, unit = ' km') => '<span class="charm">+' + num(n) + unit + '</span>';
   const hexText = (n, unit = ' km') => '<span class="hex">' + (n ? '−' : '') + num(n) + unit + '</span>';
-  const sessions = (n) => n + (n === 1 ? ' session' : ' sessions');
+  const sessions = (n) => num(n) + (n === 1 ? ' session' : ' sessions');
+  const weekName = (w) => (state.weekLabels && state.weekLabels[w]) || w;
+  const failedChecks = (t) => t.checks.filter((c) => !c.ok);
+  // e.g. "75 × 4" under the Run km, "6 sessions × 25" under Strength.
+  const rawLine = (t, key) => {
+    const raw = t.totals.raw[key];
+    const text = key === 'strength' ? sessions(raw) + ' × ' + num(state.scale.strength) : num(raw) + ' × ' + num(state.scale[key]);
+    return '<div class="muted" style="font-size:.75rem;font-weight:400">' + text + '</div>';
+  };
 
   const styleFor = (team) => ({
     color: COLORS[team.styleIndex % COLORS.length],
@@ -107,7 +115,8 @@
       return '<li data-key="' + esc(t.key) + '">' +
         '<span class="rank">' + t.rank + '</span>' +
         teamIcon(t, 30) +
-        '<div><div class="team-name">' + esc(t.name) + (t.finished ? ' 🎅' : '') + '</div>' +
+        '<div><div class="team-name">' + esc(t.name) + (t.finished ? ' 🎅' : '') +
+        (failedChecks(t).length ? ' <span class="warn-icon" title="Doesn\'t match the spreadsheet\'s calculated total">⚠️</span>' : '') + '</div>' +
         '<div class="team-sub">' + pct(t.progress) + (t.rank > 1 ? ' · ' + km(t.behindLeaderKm) + ' behind' : ' · leading') + '</div>' +
         '<div class="team-sub adj"><span title="Charms (added)">✨ ' + charmText(t.totals.charm) + '</span>' +
         '<span title="Hexes (taken off)">🧙 ' + hexText(t.totals.hex) + '</span></div>' +
@@ -144,32 +153,37 @@
       stat('Distance', km(t.distanceKm)) +
       stat(t.finished ? 'Finished' : 'To go', t.finished ? '🎅' : km(t.remainingKm)) +
       stat('Behind leader', t.rank === 1 ? '—' : km(t.behindLeaderKm)) +
-      stat('Weeks recorded', t.weekly.length) +
+      stat('This week', km(t.thisWeek.total)) +
       '</div>';
+    html += t.checks.map((c) => {
+      const what = c.which === 'week' ? 'Weekly total' : 'Challenge total';
+      return c.ok
+        ? '<p class="check ok">✓ ' + what + ' matches the spreadsheet (' + km(c.sheet) + ')</p>'
+        : '<p class="check bad">⚠️ ' + what + ': the spreadsheet says ' + km(c.sheet) + ', but its figures add up to ' + km(c.ours) + '</p>';
+    }).join('');
 
     const dot = (c) => '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + c + '"></i> ';
     html += '<h3>Totals by discipline</h3><div class="stats">' +
-      DISCIPLINES.map((d) => stat(dot(d.color) + d.label, km(t.totals[d.key]) +
-        (d.key === 'strength' ? '<div class="muted" style="font-size:.75rem;font-weight:400">' + sessions(t.totals.strengthSessions) + ' × 25 km</div>' : ''))).join('') +
+      DISCIPLINES.map((d) => stat(dot(d.color) + d.label, km(t.totals[d.key]) + rawLine(t, d.key))).join('') +
       stat(dot(BONUS.color) + 'Charms ✨ (added)', '<span class="charm">' + signedKm(t.totals.charm, '+') + '</span>') +
       stat(dot('var(--hex)') + 'Hexes 🧙 (taken off)', '<span class="hex">' + signedKm(t.totals.hex, '−') + '</span>') +
       '</div>';
 
     html += '<h3>Weekly totals (km)</h3><div class="table-scroll"><table class="compact"><thead><tr><th>Week</th>' +
       DISCIPLINES.map((d) => '<th>' + d.label + '</th>').join('') + '<th>Charm</th><th>Hex</th><th>Total</th></tr></thead><tbody>' +
-      t.weekly.slice().reverse().map((w) => '<tr><td>' + esc(w.week) + '</td>' +
+      t.weekly.slice().reverse().map((w) => '<tr><td>' + esc(weekName(w.week)) + '</td>' +
         DISCIPLINES.map((d) => '<td' + (d.key === 'strength' ? ' title="' + sessions(w.strengthSessions) + '"' : '') + '>' + num(w[d.key]) + '</td>').join('') +
         '<td>' + (w.charm ? charmText(w.charm, '') : '–') + '</td>' +
         '<td>' + (w.hex ? hexText(w.hex, '') : '–') + '</td>' +
         '<td><strong>' + num(w.total) + '</strong></td></tr>').join('') +
       '</tbody></table></div>' +
-      '<p class="muted" style="font-size:.75rem">Strength is 25 km per session. Charms add km; hexes take km off.</p>';
+      '<p class="muted" style="font-size:.75rem">' + formula() + '</p>';
     el.innerHTML = html;
   }
 
   function renderWeekly() {
     const weeks = state.weeks;
-    const head = '<thead><tr><th>Team</th>' + weeks.map((w) => '<th>' + esc(w) + '</th>').join('') +
+    const head = '<thead><tr><th>Team</th>' + weeks.map((w) => '<th>' + esc(weekName(w)) + '</th>').join('') +
       '<th>Charms</th><th>Hexes</th><th>Total</th></tr></thead>';
     const body = state.teams.map((t) => {
       const byWeek = Object.fromEntries(t.weekly.map((w) => [w.week, w.total]));
@@ -201,11 +215,26 @@
     $('discipline-bars').innerHTML = legend + (rows || '<p class="muted">No teams yet.</p>');
   }
 
+  function formula() {
+    const x = state.scale;
+    return 'km = Run × ' + num(x.run) + ' + Cycle' + (x.cycle === 1 ? '' : ' × ' + num(x.cycle)) + ' + Swim × ' + num(x.swim) +
+      ' + Strength sessions × ' + num(x.strength) + ' + Charms − Hexes. Weeks run Sunday to Saturday.';
+  }
+
   function renderStatus() {
     $('last-update').textContent = state.lastFetch ? 'Updated ' + new Date(state.lastFetch).toLocaleString() : 'Not updated yet';
     const banner = $('error-banner');
     banner.hidden = !state.lastError;
     if (state.lastError) banner.textContent = 'Last spreadsheet refresh failed: ' + state.lastError.message;
+    const warn = $('check-banner');
+    const bad = state.validation.mismatches;
+    warn.hidden = !bad.length;
+    if (bad.length) {
+      warn.textContent = '⚠️ ' + bad.length + (bad.length === 1 ? ' total doesn\'t' : ' totals don\'t') +
+        ' match the spreadsheet\'s calculated columns: ' +
+        bad.map((m) => m.team + ' (' + (m.which === 'week' ? 'weekly' : 'challenge') + ': sheet ' + num(m.sheet) + ', calculated ' + num(m.ours) + ')').join('; ');
+    }
+    $('weekly-note').textContent = formula();
   }
 
   function render() {
