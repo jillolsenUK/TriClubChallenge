@@ -157,6 +157,8 @@ h3 { font-size: 0.95rem; margin: 16px 0 6px; color: var(--header-bg); }
 table { border-collapse: collapse; width: 100%; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 th, td { padding: 6px 6px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
 th:first-child, td:first-child { text-align: left; }
+table.compact { font-size: 0.75rem; }
+table.compact th, table.compact td { padding: 5px 3px; }
 th { color: var(--muted); font-weight: 600; }
 
 .dbar-row { margin-bottom: 8px; }

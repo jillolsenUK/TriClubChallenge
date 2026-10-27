@@ -2,7 +2,7 @@
 
 London Frontrunners' Christmas challenge: a virtual team race along the **Finding Santa** GPX route (Hyde Park, London → Lapland, 3,539 km).
 Team totals are read from a public Google Sheet. Each week's totals are saved, and
-**Run-Total + Cycle-Total + Swim-Total + Strength-Total** summed over every week is how far a team
+**Run + Cycle + Swim + (Strength sessions × 25 km) + Charms − Hexes** summed over every week is how far a team
 has travelled along the route.
 
 - **Map**: the route, with each team shown at its current position. Every team gets its own Christmas picture and ring colour.
@@ -15,7 +15,9 @@ has travelled along the route.
 
 - The server downloads the sheet as CSV every `REFRESH_MINUTES` (default 15), on startup, and when someone clicks **Refresh**.
 - Columns are found by header name, not position: a `Team` column plus columns containing `Run`, `Cycle`/`Bike`,
-  `Swim` and `Strength` (a header containing "Total" wins, e.g. `Run-Total`). The header row can sit below title rows.
+  `Swim` and `Strength` (a header containing "Total" wins, e.g. `Run-Total`), plus optional `Charm` and `Hex` columns.
+  Strength is a number of sessions, each worth 25 km. Charms are extra km added to the team's weekly and overall totals;
+  hexes are km taken off (written as `50` or `-50`, either way). A team can't be pushed back past the start. The header row can sit below title rows.
 - **Weeks**: if the sheet has a `Week` column, its values are used. Otherwise the sheet is treated as showing
   *this week's* totals, and they are saved under the current week (ISO week, or `Week 1, 2, …` when `CHALLENGE_START`
   is set). Re-reading during the same week overwrites that week's figures, and a new week starts a new entry.
@@ -47,8 +49,8 @@ npm test
 | `TOTALS_MODE` | `weekly` | `weekly` = sheet shows this week's totals and they're summed; `cumulative` = sheet already shows race-to-date totals |
 | `CHALLENGE_START` | – | `YYYY-MM-DD`; labels weeks `Week 1`, `Week 2`, … |
 | `TEAM_KEY` | `slot` | `slot` (row position) or `name` |
-| `SCALE_RUN`, `SCALE_CYCLE`, `SCALE_SWIM`, `SCALE_STRENGTH` | `1` | Multiply each total before it counts as km (e.g. if Swim is in metres use `0.001`, or weight a discipline) |
-| `COL_TEAM`, `COL_TEAM_ID`, `COL_WEEK`, `COL_RUN`, `COL_CYCLE`, `COL_SWIM`, `COL_STRENGTH` | auto | Exact header names, if auto-detection picks the wrong column |
+| `SCALE_RUN`, `SCALE_CYCLE`, `SCALE_SWIM` / `SCALE_STRENGTH` | `1` / `25` | Multiply each total before it counts as km (e.g. if Swim is in metres use `0.001`, or weight a discipline) |
+| `COL_TEAM`, `COL_TEAM_ID`, `COL_WEEK`, `COL_RUN`, `COL_CYCLE`, `COL_SWIM`, `COL_STRENGTH`, `COL_CHARM`, `COL_HEX` | auto | Exact header names, if auto-detection picks the wrong column |
 | `ADMIN_KEY` | – | If set, the Refresh button asks for this key |
 | `DATA_DIR` | `./data` (`/home/data` on Azure) | Where `store.json` is kept |
 

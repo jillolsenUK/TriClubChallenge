@@ -1,5 +1,5 @@
 // Reads the public Google Sheet as CSV and turns it into team rows:
-//   { key, name, week, run, cycle, swim, strength }
+//   { key, name, week, run, cycle, swim, strength, charm, hex }
 // Columns are found by header name so the sheet can be rearranged freely.
 
 const config = require('./config');
@@ -44,6 +44,8 @@ const DISCIPLINES = {
   swim: ['swim', 'swimming'],
   strength: ['strength', 'gym', 'weights'],
 };
+// Bonus (charm) and penalty (hex) km, applied on top of the disciplines.
+const ADJUSTMENTS = { charm: ['charm'], hex: ['hex'] };
 
 // Pick the column for each field. For disciplines, a header containing
 // "total" (e.g. "Run-Total") wins over a bare "Run" column.
@@ -52,7 +54,7 @@ function mapColumns(header) {
   const find = (pred) => h.findIndex(pred);
   const cols = {};
 
-  for (const [key, words] of Object.entries(DISCIPLINES)) {
+  for (const [key, words] of Object.entries({ ...DISCIPLINES, ...ADJUSTMENTS })) {
     const override = config.columns[key];
     if (override) {
       cols[key] = h.indexOf(norm(override));
@@ -116,7 +118,19 @@ function extractTeams(rows, currentWeek) {
     else if (config.teamKey === 'name') key = 'name:' + norm(name);
     else key = 'slot:' + slot;
     const val = (k) => (cols[k] >= 0 ? toNumber(r[cols[k]]) : 0);
-    out.push({ key, name, week, run: val('run'), cycle: val('cycle'), swim: val('swim'), strength: val('strength') });
+    out.push({
+      key,
+      name,
+      week,
+      run: val('run'),
+      cycle: val('cycle'),
+      swim: val('swim'),
+      strength: val('strength'),
+      // Always treated as amounts: a charm adds km and a hex takes km away,
+      // whether the sheet writes the hex as 50 or -50.
+      charm: Math.abs(val('charm')),
+      hex: Math.abs(val('hex')),
+    });
   }
   return { teams: out, columns: cols, header: rows[headerIdx] };
 }

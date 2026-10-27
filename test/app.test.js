@@ -14,6 +14,10 @@ const config = {
   challengeStart: '',
   scale: { run: 1, cycle: 1, swim: 1, strength: 1 },
 };
+const liveConfig = {
+  ...config,
+  scale: { ...config.scale, strength: 25 },
+};
 const route = {
   name: 'Test',
   totalKm: 100,
@@ -41,7 +45,7 @@ test('extractTeams finds the header row and Run/Cycle/Swim/Strength total column
   ].join('\n');
   const { teams } = extractTeams(parseCsv(csv), '2026-W44');
   assert.strictEqual(teams.length, 2);
-  assert.deepStrictEqual(teams[0], { key: 'slot:1', name: 'Red Rockets', week: '2026-W44', run: 10, cycle: 20, swim: 3, strength: 4 });
+  assert.deepStrictEqual(teams[0], { key: 'slot:1', name: 'Red Rockets', week: '2026-W44', run: 10, cycle: 20, swim: 3, strength: 4, charm: 0, hex: 0 });
   assert.strictEqual(teams[1].run, 1000);
 });
 
@@ -91,4 +95,43 @@ test('positionAt interpolates and clamps', () => {
 test('isoWeekLabel', () => {
   assert.strictEqual(isoWeekLabel(new Date('2026-10-27T12:00:00Z')), '2026-W44');
   assert.strictEqual(isoWeekLabel(new Date('2027-01-01T12:00:00Z')), '2026-W53');
+});
+
+test('strength sessions are worth 25 km, charms add and hexes subtract', () => {
+  const csv = 'Team,Run-Total,Cycle-Total,Swim-Total,Strength-Total,Charm,Hex\nA,10,20,5,4,30,-15\n';
+  const { teams } = extractTeams(parseCsv(csv), 'W1');
+  assert.deepStrictEqual(teams[0], { key: 'slot:1', name: 'A', week: 'W1', run: 10, cycle: 20, swim: 5, strength: 4, charm: 30, hex: 15 });
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-'));
+  const store = new Store(dir);
+  store.applyRows(teams);
+  store.applyRows([{ key: 'slot:1', name: 'A', week: 'W2', run: 0, cycle: 0, swim: 0, strength: 1, charm: 0, hex: 5 }]);
+  const t = computeState(store.data, { ...route, totalKm: 1000 }, liveConfig).teams[0];
+  assert.deepStrictEqual(t.weekly.map((w) => w.total), [10 + 20 + 5 + 100 + 30 - 15, 25 - 5]);
+  assert.strictEqual(t.weekly[0].strength, 100);
+  assert.strictEqual(t.totals.strengthSessions, 5);
+  assert.strictEqual(t.totals.charm, 30);
+  assert.strictEqual(t.totals.hex, 20);
+  assert.strictEqual(t.totals.total, 150 + 20);
+});
+
+test('hexes never push a team behind the start', () => {
+  const data = {
+    teams: { a: { key: 'a', name: 'A', styleIndex: 0, previousNames: [] } },
+    weeks: { W1: { a: { run: 5, cycle: 0, swim: 0, strength: 0, charm: 0, hex: 50 } } },
+  };
+  const t = computeState(data, route, liveConfig).teams[0];
+  assert.strictEqual(t.totals.total, -45);
+  assert.strictEqual(t.distanceKm, 0);
+  assert.deepStrictEqual(t.position, { lat: 0, lon: 0 });
+});
+
+test('weeks saved before charms and hexes existed still add up', () => {
+  const data = {
+    teams: { a: { key: 'a', name: 'A', styleIndex: 0, previousNames: [] } },
+    weeks: { W1: { a: { run: 5, cycle: 5, swim: 0, strength: 2 } } },
+  };
+  const t = computeState(data, route, liveConfig).teams[0];
+  assert.strictEqual(t.totals.total, 60);
+  assert.strictEqual(t.totals.charm, 0);
 });

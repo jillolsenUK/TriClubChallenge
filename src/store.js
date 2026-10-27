@@ -1,7 +1,7 @@
 // JSON file store for teams and their weekly totals.
 // Shape:
 //   teams: { [key]: { key, name, styleIndex, firstSeen, lastSeen, previousNames: [] } }
-//   weeks: { [weekLabel]: { [teamKey]: { run, cycle, swim, strength, updatedAt } } }
+//   weeks: { [weekLabel]: { [teamKey]: { run, cycle, swim, strength, charm, hex, updatedAt } } }
 //   lastFetch, lastError
 
 const fs = require('fs');
@@ -43,7 +43,15 @@ class Store {
       }
       t.lastSeen = ts;
       weeks[r.week] = weeks[r.week] || {};
-      weeks[r.week][r.key] = { run: r.run, cycle: r.cycle, swim: r.swim, strength: r.strength, updatedAt: ts };
+      weeks[r.week][r.key] = {
+        run: r.run,
+        cycle: r.cycle,
+        swim: r.swim,
+        strength: r.strength,
+        charm: r.charm || 0,
+        hex: r.hex || 0,
+        updatedAt: ts,
+      };
     }
     this.data.lastFetch = ts;
     this.data.lastError = null;

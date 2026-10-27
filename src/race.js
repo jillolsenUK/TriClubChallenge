@@ -3,6 +3,7 @@
 const { positionAt } = require('./geo');
 
 const DISCIPLINES = ['run', 'cycle', 'swim', 'strength'];
+const SUMMED = [...DISCIPLINES, 'strengthSessions', 'charm', 'hex', 'total'];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function isoWeekLabel(date) {
@@ -32,21 +33,24 @@ function computeState(data, route, config) {
       .filter((w) => data.weeks[w][t.key])
       .map((w) => {
         const e = data.weeks[w][t.key];
-        const row = { week: w, updatedAt: e.updatedAt };
+        const row = { week: w, updatedAt: e.updatedAt, strengthSessions: e.strength || 0 };
         let sum = 0;
         for (const k of DISCIPLINES) {
           row[k] = (e[k] || 0) * config.scale[k];
           sum += row[k];
         }
-        row.total = sum;
+        row.charm = e.charm || 0;
+        row.hex = e.hex || 0;
+        row.total = sum + row.charm - row.hex;
         return row;
       });
 
-    const totals = { run: 0, cycle: 0, swim: 0, strength: 0, total: 0 };
+    const totals = Object.fromEntries(SUMMED.map((k) => [k, 0]));
     const counted = config.totalsMode === 'cumulative' ? weekly.slice(-1) : weekly;
-    for (const w of counted) for (const k of [...DISCIPLINES, 'total']) totals[k] += w[k];
+    for (const w of counted) for (const k of SUMMED) totals[k] += w[k];
 
-    const distanceKm = Math.min(totals.total, route.totalKm);
+    // Hexes can push a team backwards, but never behind the start line.
+    const distanceKm = Math.min(Math.max(totals.total, 0), route.totalKm);
     const [lat, lon] = positionAt(route, distanceKm);
     return {
       key: t.key,

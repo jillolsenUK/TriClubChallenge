@@ -24,6 +24,12 @@
     { key: 'swim', label: 'Swim', color: '#2e6fde' },
     { key: 'strength', label: 'Strength', color: '#e0a800' },
   ];
+  // Everything that adds km: the disciplines plus charms. Hexes are taken off.
+  const BONUS = { key: 'charm', label: 'Charms ✨', color: '#8e44ad' };
+  const ADDS = [...DISCIPLINES, BONUS];
+  const signedKm = (n, sign) => (n ? sign : '') + km(n);
+  const num = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  const sessions = (n) => n + (n === 1 ? ' session' : ' sessions');
 
   const styleFor = (team) => ({
     color: COLORS[team.styleIndex % COLORS.length],
@@ -136,16 +142,23 @@
       stat('Weeks recorded', t.weekly.length) +
       '</div>';
 
+    const dot = (c) => '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + c + '"></i> ';
     html += '<h3>Totals by discipline</h3><div class="stats">' +
-      DISCIPLINES.map((d) => stat('<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + d.color + '"></i> ' + d.label, km(t.totals[d.key]))).join('') +
+      DISCIPLINES.map((d) => stat(dot(d.color) + d.label, km(t.totals[d.key]) +
+        (d.key === 'strength' ? '<div class="muted" style="font-size:.75rem;font-weight:400">' + sessions(t.totals.strengthSessions) + ' × 25 km</div>' : ''))).join('') +
+      stat(dot(BONUS.color) + 'Charms ✨ (added)', signedKm(t.totals.charm, '+')) +
+      stat(dot('#555') + 'Hexes 🧙 (taken off)', signedKm(t.totals.hex, '−')) +
       '</div>';
 
-    html += '<h3>Weekly totals</h3><div class="table-scroll"><table><thead><tr><th>Week</th>' +
-      DISCIPLINES.map((d) => '<th>' + d.label + '</th>').join('') + '<th>Total</th></tr></thead><tbody>' +
+    html += '<h3>Weekly totals (km)</h3><div class="table-scroll"><table class="compact"><thead><tr><th>Week</th>' +
+      DISCIPLINES.map((d) => '<th>' + d.label + '</th>').join('') + '<th>Charm</th><th>Hex</th><th>Total</th></tr></thead><tbody>' +
       t.weekly.slice().reverse().map((w) => '<tr><td>' + esc(w.week) + '</td>' +
-        DISCIPLINES.map((d) => '<td>' + w[d.key].toFixed(1) + '</td>').join('') +
-        '<td><strong>' + w.total.toFixed(1) + '</strong></td></tr>').join('') +
-      '</tbody></table></div>';
+        DISCIPLINES.map((d) => '<td' + (d.key === 'strength' ? ' title="' + sessions(w.strengthSessions) + '"' : '') + '>' + num(w[d.key]) + '</td>').join('') +
+        '<td>' + (w.charm ? '+' + num(w.charm) : '–') + '</td>' +
+        '<td>' + (w.hex ? '−' + num(w.hex) : '–') + '</td>' +
+        '<td><strong>' + num(w.total) + '</strong></td></tr>').join('') +
+      '</tbody></table></div>' +
+      '<p class="muted" style="font-size:.75rem">Strength is 25 km per session. Charms add km; hexes take km off.</p>';
     el.innerHTML = html;
   }
 
@@ -162,10 +175,13 @@
   }
 
   function renderDisciplines() {
-    const max = Math.max(1, ...state.teams.map((t) => t.totals.total));
-    const legend = '<div class="legend">' + DISCIPLINES.map((d) => '<span><i style="background:' + d.color + '"></i>' + d.label + '</span>').join('') + '</div>';
-    const rows = state.teams.map((t) => '<div class="dbar-row"><div class="dbar-label"><span>' + esc(t.name) + '</span><span>' + km(t.totals.total) + '</span></div>' +
-      '<div class="dbar">' + DISCIPLINES.map((d) => {
+    const added = (t) => ADDS.reduce((sum, d) => sum + Math.max(0, t.totals[d.key]), 0);
+    const max = Math.max(1, ...state.teams.map(added));
+    const legend = '<div class="legend">' + ADDS.map((d) => '<span><i style="background:' + d.color + '"></i>' + d.label + '</span>').join('') +
+      '<span>🧙 Hexes are taken off the total</span></div>';
+    const rows = state.teams.map((t) => '<div class="dbar-row"><div class="dbar-label"><span>' + esc(t.name) + '</span><span>' + km(t.totals.total) +
+      (t.totals.hex ? ' <span class="muted">(' + signedKm(t.totals.hex, '−') + ' hex)</span>' : '') + '</span></div>' +
+      '<div class="dbar">' + ADDS.map((d) => {
         const v = t.totals[d.key];
         return v > 0 ? '<span title="' + d.label + ': ' + v.toFixed(1) + ' km" style="width:' + ((v / max) * 100).toFixed(2) + '%;background:' + d.color + '"></span>' : '';
       }).join('') + '</div></div>').join('');

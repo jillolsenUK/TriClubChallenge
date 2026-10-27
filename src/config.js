@@ -23,11 +23,12 @@ module.exports = {
   // Optional race start date (YYYY-MM-DD); weeks are then labelled "Week 1", "Week 2", ...
   challengeStart: env.CHALLENGE_START || '',
   // Multipliers converting each discipline total into km along the route.
+  // Strength is a count of sessions, each worth 25 km.
   scale: {
     run: num(env.SCALE_RUN, 1),
     cycle: num(env.SCALE_CYCLE, 1),
     swim: num(env.SCALE_SWIM, 1),
-    strength: num(env.SCALE_STRENGTH, 1),
+    strength: num(env.SCALE_STRENGTH, 25),
   },
   // Optional exact header names, if auto-detection picks the wrong column.
   columns: {
@@ -38,5 +39,7 @@ module.exports = {
     cycle: env.COL_CYCLE || '',
     swim: env.COL_SWIM || '',
     strength: env.COL_STRENGTH || '',
+    charm: env.COL_CHARM || '',
+    hex: env.COL_HEX || '',
   },
 };
