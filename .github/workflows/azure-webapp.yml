@@ -5,11 +5,25 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Only one deploy at a time; a newer push cancels an older deploy still in progress.
+concurrency:
+  group: azure-deploy
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Re-running an old run would redeploy old code over newer changes.
+      - name: Only deploy the latest main
+        run: |
+          latest=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$latest" != "$GITHUB_SHA" ]; then
+            echo "::error::This run is for $GITHUB_SHA but main is now $latest. Use 'Run workflow' instead of re-running an old run."
+            exit 1
+          fi
 
       - uses: actions/setup-node@v4
         with:

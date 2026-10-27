@@ -31,7 +31,9 @@ async function refresh() {
 }
 
 const app = express();
-app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
+// No max-age on the app's own files: browsers revalidate (cheap, via ETag) so a
+// new deploy shows up on the next page load.
+app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/vendor/leaflet', express.static(path.dirname(require.resolve('leaflet/dist/leaflet.js')), { maxAge: '7d' }));
 
 app.get('/api/route', (req, res) => {
