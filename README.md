@@ -51,8 +51,9 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
 ## Hidden prizes
 
 Faint ❄ snowflakes are hidden on the map at **the North Pole** (as far north as the map goes, about 84.5°N),
-**Hyde Park in Sydney** (a twist on the London start), **Mount Teide in Tenerife** and **Girona**. They only appear
-once you zoom in past the normal view (zoom level 5 or closer). The **first** person to click each one gets that spot's
+**Hyde Park in Sydney** (a twist on the London start), **Mount Teide in Tenerife** and **Girona**. They're bright
+twinkling blue snowflakes, shown at the normal map view and closer (hidden only when zoomed right out to the whole
+world), so finding them means exploring the map. The **first** person to click each one gets that spot's
 prize code, worth `PRIZE_KM` (50) km. Anyone after that is told someone got there first, and the finder sees their code
 again if they click again in the same browser. They send the code to the organiser, who adds the km as a Charm for
 their team.

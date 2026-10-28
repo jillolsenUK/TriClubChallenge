@@ -128,14 +128,15 @@
         return null;
       }
     };
-    // Only there once you've zoomed in past the normal view, so they have to be hunted for.
-    const PRIZE_ZOOM = 5;
+    // Shown at the normal view and closer, but not when zoomed right out to the
+    // whole world, so you have to go looking rather than spot all four at once.
+    const PRIZE_ZOOM = 3;
     const layer = L.layerGroup();
     const toggle = () => (map.getZoom() >= PRIZE_ZOOM ? layer.addTo(map) : layer.remove());
     map.on('zoomend', toggle);
     toggle();
     for (const spot of spots) {
-      const icon = L.divIcon({ className: 'hidden-prize', html: '❄', iconSize: [18, 18], iconAnchor: [9, 9] });
+      const icon = L.divIcon({ className: 'hidden-prize', html: '<span>❄</span>', iconSize: [24, 24], iconAnchor: [12, 12] });
       const marker = L.marker([spot.lat, spot.lon], { icon, keyboard: false, riseOnHover: true }).addTo(layer);
       const show = (html) =>
         L.popup({ maxWidth: 260, offset: [0, -4] }).setLatLng(marker.getLatLng()).setContent('<div class="np-popup">' + html + '</div>').openOn(map);
