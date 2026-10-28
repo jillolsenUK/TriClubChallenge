@@ -31,11 +31,14 @@ function ensurePrizes(data, spots) {
 }
 
 // The first call for a spot wins its code; later calls are told it's gone.
-function claimPrize(data, spots, id, now = new Date()) {
+// `remembered` is the code the caller's browser was given before: if it's still
+// this spot's code, that's the finder coming back, so they see it again.
+function claimPrize(data, spots, id, now = new Date(), remembered = '') {
   const spot = spots.find((s) => s.id === id);
   if (!spot) return null;
   ensurePrizes(data, spots);
   const prize = data.prizes[id];
+  if (prize.claimedAt && remembered && remembered === prize.code) return { found: true, code: prize.code, km: spot.km, again: true };
   if (prize.claimedAt) return { found: false, claimedAt: prize.claimedAt, km: spot.km };
   prize.claimedAt = now.toISOString();
   return { found: true, code: prize.code, km: spot.km };

@@ -345,8 +345,13 @@ test('each hidden prize goes to its first finder only, and a new code starts a n
   assert.match(girona.code, /^GIRONA-[A-HJ-NP-Z2-9]{6}$/);
   assert.strictEqual(ensurePrizes(data, spots), false);
   assert.strictEqual(claimPrize(data, spots, 'nowhere'), null);
-  // A new code re-hides that spot's prize.
-  assert.strictEqual(claimPrize(data, [{ ...spots[0], code: 'ELF-77' }], 'north-pole').code, 'ELF-77');
+  // The finder's browser sends back its code and sees it again; a wrong code doesn't.
+  assert.deepStrictEqual(claimPrize(data, spots, 'north-pole', new Date(), 'JINGLE-50'), { found: true, code: 'JINGLE-50', km: 50, again: true });
+  assert.strictEqual(claimPrize(data, spots, 'north-pole', new Date(), 'GUESS').found, false);
+  // A new code re-hides that spot's prize, and the old code no longer counts.
+  const reset = [{ ...spots[0], code: 'ELF-77' }];
+  assert.strictEqual(claimPrize(data, reset, 'north-pole', new Date(), 'JINGLE-50').code, 'ELF-77');
+  assert.strictEqual(claimPrize(data, reset, 'north-pole', new Date(), 'JINGLE-50').found, false);
   // The codes are never sent to the page.
   assert.ok(!JSON.stringify(publicSpots(spots)).includes('JINGLE'));
   assert.ok(!JSON.stringify(computeState({ teams: {}, weeks: {}, prizes: data.prizes }, route, config)).includes(girona.code));

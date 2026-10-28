@@ -147,9 +147,16 @@
       // The finder's code is remembered (for this visit, and in this browser) so they can see it again.
       let mine = remember(spot.id);
       marker.on('click', async () => {
-        if (mine) return show(foundText(spot, mine.code, mine.km));
         try {
-          const res = await (await fetch('api/prizes/' + encodeURIComponent(spot.id), { method: 'POST' })).json();
+          // Send back any code this browser was given, so the finder sees it again,
+          // but not after the organiser has reset the prize with a new code.
+          const res = await (
+            await fetch('api/prizes/' + encodeURIComponent(spot.id), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: mine ? mine.code : '' }),
+            })
+          ).json();
           if (res.found) {
             mine = { code: res.code, km: res.km };
             remember(spot.id, mine);

@@ -62,7 +62,9 @@ the Charm columns of their team, or to the Hex columns of the team they picked.
 Codes are never in the page; only the server knows them. Set each spot's code in the Azure environment variables:
 `NORTH_POLE_CODE`, `SYDNEY_CODE`, `TENERIFE_CODE`, `GIRONA_CODE`. Without one, a random code (e.g. `TEIDE-Y6JT58`) is
 made, and the app's log lists every spot's code at startup and records when each is found. Setting a new code for a spot
-hides a fresh prize there.
+hides a fresh prize there (restart the web app if it doesn't take effect). That's also how to reset a prize while
+testing: use throwaway codes like `TEST-1`, `TEST-2`, then set the real codes before launch. A finder's browser only
+shows its remembered code while it's still that spot's current code.
 
 ## Run locally
 

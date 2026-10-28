@@ -109,10 +109,10 @@ app.post('/api/refresh', async (req, res) => {
 
 // Hidden map prizes: where they are (no codes), and the first click on each gets its code.
 app.get('/api/prizes', (req, res) => res.json(publicSpots(config.prizes)));
-app.post('/api/prizes/:id', (req, res) => {
-  const result = claimPrize(store.data, config.prizes, req.params.id);
+app.post('/api/prizes/:id', express.json({ limit: '1kb' }), (req, res) => {
+  const result = claimPrize(store.data, config.prizes, req.params.id, new Date(), String(req.body?.code || ''));
   if (!result) return res.status(404).json({ error: 'No prize hidden there' });
-  if (result.found) {
+  if (result.found && !result.again) {
     store.save();
     console.log(`Hidden prize at ${req.params.id} found at ${store.data.prizes[req.params.id].claimedAt} (code ${result.code})`);
   }
