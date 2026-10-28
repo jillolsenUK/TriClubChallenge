@@ -8,6 +8,9 @@ const { computeState } = require('./race');
 const { fetchWorkbook, extractTeamImages, saveThumbnails } = require('./images');
 const { ensurePrizes, claimPrize, publicSpots } = require('./prizes');
 
+// Log anything unexpected rather than letting a background task stop the app.
+process.on('unhandledRejection', (err) => console.error('Unexpected error (the app keeps running):', err));
+
 const route = require('../route/route.json');
 const store = new Store(config.dataDir, config.timeZone);
 if (ensurePrizes(store.data, config.prizes)) store.save();
@@ -46,7 +49,11 @@ async function refresh() {
     } catch (err) {
       console.warn('Message refresh failed:', err.message);
     } finally {
-      store.save();
+      try {
+        store.save();
+      } catch (err) {
+        console.error('Saving data failed:', err.message);
+      }
       refreshing = null;
     }
   })();

@@ -381,3 +381,19 @@ test('hidden prizes: 50 km each (Girona 100), appear at zoom 6, and each can be 
     ],
   );
 });
+
+test('a damaged data file falls back to the backup instead of stopping the app', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-'));
+  const store = new Store(dir);
+  store.data.message = 'first';
+  store.save();
+  store.data.message = 'second';
+  store.save(); // the backup now holds "first"
+  fs.writeFileSync(path.join(dir, 'store.json'), '{"teams": {"slot:1": {"na'); // cut off mid-write
+  assert.strictEqual(new Store(dir).data.message, 'first');
+  assert.ok(fs.readdirSync(dir).some((f) => f.startsWith('store.json.damaged-')));
+  // Nothing readable at all: start empty rather than crash.
+  const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'tri-'));
+  fs.writeFileSync(path.join(empty, 'store.json'), 'not json');
+  assert.deepStrictEqual(new Store(empty).data.teams, {});
+});

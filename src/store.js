@@ -33,8 +33,8 @@ class Store {
     this.timeZone = timeZone;
     fs.mkdirSync(dir, { recursive: true });
     this.data = { version: VERSION, teams: {}, weeks: {}, resetSeen: {}, lastFetch: null, lastError: null };
-    if (fs.existsSync(this.file)) {
-      const saved = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+    const saved = this.load();
+    if (saved) {
       // Earlier versions saved figures under other week names: ISO weeks
       // ("2026-W44"), or values from the "Weekly Total (Calulated)" column, which
       // was mistaken for a week number. Those aren't real weekly figures (the
@@ -57,9 +57,31 @@ class Store {
     }
   }
 
+  // The saved data, or the last good backup if the file is damaged (e.g. two
+  // copies of the app overlapping during an Azure restart). A damaged file is
+  // set aside rather than stopping the app from starting.
+  load() {
+    for (const file of [this.file, this.file + '.bak']) {
+      if (!fs.existsSync(file)) continue;
+      try {
+        const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+        if (file !== this.file) console.warn(`Saved data was damaged; restored the backup from ${fs.statSync(file).mtime.toISOString()}`);
+        return saved;
+      } catch (err) {
+        const aside = `${file}.damaged-${Date.now()}`;
+        fs.renameSync(file, aside);
+        console.error(`Couldn't read ${path.basename(file)} (${err.message}); moved it to ${path.basename(aside)}`);
+      }
+    }
+    return null;
+  }
+
+  // Each running copy of the app writes its own temporary file, then swaps it
+  // in, keeping the previous good version as a backup.
   save() {
-    const tmp = this.file + '.tmp';
+    const tmp = `${this.file}.${process.pid}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2));
+    if (fs.existsSync(this.file)) fs.copyFileSync(this.file, this.file + '.bak');
     fs.renameSync(tmp, this.file);
   }
 
