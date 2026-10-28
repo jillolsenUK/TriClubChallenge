@@ -3,7 +3,7 @@
 London Frontrunners' Christmas challenge: a virtual team race along the **Finding Santa** GPX route (Hyde Park, London → Lapland, 3,539 km).
 Team figures are read from a public Google Sheet. A team's distance along the route is
 
-**Run × 4 + Virtual cycle × 0.8 + Outdoor cycle + Swim × 26 + Strength sessions × 25 + Charms − Hexes**
+**Run × 4 + Virtual cycle × 0.8 + Outdoor cycle + Swim × 26 + Strength sessions × 25 + Presents − Pranks**
 
 worked out from the sheet's challenge **total** columns, the same formula as its `Challenge Total (Calulated)` column.
 Each week's figures (from the **weekly** columns) are saved too, so the app shows a week-by-week history.
@@ -22,9 +22,10 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
 
 - The server downloads the sheet as CSV every `REFRESH_MINUTES` (default 15), on startup, and when someone clicks **Refresh**.
 - **Columns** are found by header name, not position, on the `Data` tab. It has a `Team Name` column and, for each of
-  Run, Virtual cycle, Outdoor cycle, Swim, Strength, Charm and Hex, a total column (`Run-total`, `Virtual-Cycle Total`,
+  Run, Virtual cycle, Outdoor cycle, Swim, Strength, Presents and Pranks, a total column (`Run-total`, `Virtual-Cycle Total`,
   `Outdoor-Cycle-Total`, …) and a weekly column (`Run-week`, `Virtual-Cycle-week`, `Outdoor Cycle-week`,
-  `swim-week`, …). Strength is a number of sessions. Charms are km added and hexes are km taken off (written as `50` or
+  `swim-week`, …). The present and prank columns can be named `Present-total`/`Prank-total` (etc.) or the older
+  `Charm-total`/`Hex-total`. Strength is a number of sessions. Presents are km added and pranks are km taken off (written as `50` or
   `-50`, either way). A team can't be pushed back past the start. The header row can sit below title rows.
 - **Weeks** run Sunday to Saturday (UK time). The sheet zeroes its weekly columns on Sunday; until it has, Sunday's
   figures still count for the week just finished; the app tells the reset has happened when the figures drop.
@@ -54,10 +55,10 @@ Faint ❄ snowflakes are hidden on the map at **the North Pole** (as far north a
 **Hyde Park in Sydney** (a twist on the London start), **Mount Teide in Tenerife** and **Girona**. They're small
 blue snowflakes that only appear once you zoom in close (zoom level 6 by default; the page opens at about 4 on a
 desktop and 3 on a phone), so finding them means zooming in on the right part of the map. The **first** person to click each one gets that spot's
-prize code, worth 50 km (Girona: 100 km). The finder chooses how to use it: as a **charm**, adding the km to their own
-team, or as a **hex**, taking the km off another team. Anyone after that is told someone got there first, and the finder sees their code
+prize code, worth 50 km (Girona: 100 km). The finder chooses how to use it: as a **present** 🎁, adding the km to their own
+team, or as a **prank** 😈, taking the km off another team. Anyone after that is told someone got there first, and the finder sees their code
 again if they click again in the same browser. They send the code and their choice to the organiser, who adds the km to
-the Charm columns of their team, or to the Hex columns of the team they picked.
+the Present (Charm) columns of their team, or to the Prank (Hex) columns of the team they picked.
 
 Codes are never in the page; only the server knows them. Set each spot's code in the Azure environment variables:
 `NORTH_POLE_CODE`, `SYDNEY_CODE`, `TENERIFE_CODE`, `GIRONA_CODE`. Without one, a random code (e.g. `TEIDE-Y6JT58`) is
@@ -134,7 +135,7 @@ Then deploy either way:
 
 `npm run simulate -- [outDir] [--seed=N] [--refresh=15]` plays the spreadsheet forward from
 `test/fixtures/data-tab-2026-11-26.csv` to Christmas Eve, running the app's real code against it. Teams log
-activities, charms and hexes are handed out, placeholder teams are renamed, late Saturday entries arrive on Sunday
+activities, presents and pranks are handed out, placeholder teams are renamed, late Saturday entries arrive on Sunday
 morning and the `-week` columns are zeroed at 10:00 every Sunday. The app reads the sheet every 15 minutes. It then
 compares every saved week with the sheet's `Weekly Total (Calulated)` and every team's total with
 `Challenge Total (Calulated)`, and writes `report.md` (with the full activity log) and `store.json` to `outDir`.

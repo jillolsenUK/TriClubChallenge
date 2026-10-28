@@ -52,9 +52,10 @@ const FIELDS = {
   outdoorCycle: (x) => !isVirtual(x) && has('cycle', 'bike', 'ride')(x),
   swim: has('swim'),
   strength: has('strength', 'gym', 'weights'),
-  // Bonus (charm) and penalty (hex) km, applied on top of the disciplines.
-  charm: has('charm'),
-  hex: has('hex'),
+  // Bonus km (Charm, now called Presents) and penalty km (Hex, now Pranks),
+  // applied on top of the disciplines. Either name works in the sheet.
+  charm: has('charm', 'present'),
+  hex: has('hex', 'prank'),
 };
 const FIELD_KEYS = Object.keys(FIELDS);
 const DISCIPLINE_KEYS = ['run', 'virtualCycle', 'outdoorCycle', 'swim', 'strength'];

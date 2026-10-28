@@ -397,3 +397,11 @@ test('a damaged data file falls back to the backup instead of stopping the app',
   fs.writeFileSync(path.join(empty, 'store.json'), 'not json');
   assert.deepStrictEqual(new Store(empty).data.teams, {});
 });
+
+test('Present and Prank columns are read the same as Charm and Hex', () => {
+  const csv = DATA_TAB.replace('Charm-total', 'Present-total').replace('Charm-week', 'Present-week')
+    .replace('Hex-total', 'Prank-total').replace('Hex-Week', 'Prank-Week');
+  assert.notStrictEqual(csv, DATA_TAB);
+  const [t] = extractTeams(parseCsv(csv)).teams;
+  assert.deepStrictEqual([t.total.charm, t.total.hex, t.weekly.charm, t.weekly.hex], [40, 25, 20, 5]);
+});

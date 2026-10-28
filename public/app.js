@@ -25,12 +25,13 @@
     { key: 'swim', label: 'Swim', color: '#2e6fde' },
     { key: 'strength', label: 'Strength', short: 'Str', color: '#e0a800' },
   ];
-  // Everything that adds km: the disciplines plus charms. Hexes are taken off.
-  const BONUS = { key: 'charm', label: 'Charms ✨', color: '#8e44ad' };
+  // Everything that adds km: the disciplines plus presents (the sheet's charm
+  // columns). Pranks (the hex columns) are taken off.
+  const BONUS = { key: 'charm', label: 'Presents 🎁', color: '#8e44ad' };
   const ADDS = [...DISCIPLINES, BONUS];
   const signedKm = (n, sign) => (n ? sign : '') + km(n);
   const num = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-  // Charm totals in purple, hex totals in red.
+  // Present totals in purple, prank totals in red.
   const charmText = (n, unit = ' km') => '<span class="charm">+' + num(n) + unit + '</span>';
   const hexText = (n, unit = ' km') => '<span class="hex">' + (n ? '−' : '') + num(n) + unit + '</span>';
   const sessions = (n) => num(n) + (n === 1 ? ' session' : ' sessions');
@@ -173,8 +174,8 @@
   }
   const foundText = (spot, code, km) =>
     '<strong>🎉 You found the secret snowflake at ' + esc(spot.name) + '!</strong><br>Your prize code is<div class="np-code">' + esc(code) + '</div>' +
-    'Send it to the challenge organiser to claim <strong>' + km + ' km</strong>: either as a ✨ <strong>charm</strong> for your team, ' +
-    'or as a 🧙 <strong>hex</strong> taking ' + km + ' km off another team. Only the first finder gets it, so keep it secret!';
+    'Send it to the challenge organiser to claim <strong>' + km + ' km</strong>: either as a 🎁 <strong>present</strong> for your team, ' +
+    'or as a 😈 <strong>prank</strong> taking ' + km + ' km off another team. Only the first finder gets it, so keep it secret!';
 
   function updateMarkers() {
     const seen = new Set();
@@ -212,8 +213,8 @@
         '<div><div class="team-name">' + esc(t.name) + (t.finished ? ' 🎅' : '') +
         (failedChecks(t).length ? ' <span class="warn-icon" title="Doesn\'t match the spreadsheet\'s calculated total">⚠️</span>' : '') + '</div>' +
         '<div class="team-sub">' + pct(t.progress) + (t.rank > 1 ? ' · ' + km(t.behindLeaderKm) + ' behind' : ' · leading') + '</div>' +
-        '<div class="team-sub adj"><span title="Charms (added)">✨ ' + charmText(t.totals.charm) + '</span>' +
-        '<span title="Hexes (taken off)">🧙 ' + hexText(t.totals.hex) + '</span></div>' +
+        '<div class="team-sub adj"><span title="Presents (added)">🎁 ' + charmText(t.totals.charm) + '</span>' +
+        '<span title="Pranks (taken off)">😈 ' + hexText(t.totals.hex) + '</span></div>' +
         '<div class="bar"><span style="width:' + (t.progress * 100).toFixed(2) + '%;background:' + s.color + '"></span></div></div>' +
         '<span class="km">' + km(t.distanceKm) + '</span></li>';
     }).join('');
@@ -270,12 +271,12 @@
     const dot = (c) => '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + c + '"></i> ';
     html += '<h3>Totals by discipline</h3><div class="stats">' +
       DISCIPLINES.map((d) => stat(dot(d.color) + d.label, km(t.totals[d.key]) + rawLine(t, d.key))).join('') +
-      stat(dot(BONUS.color) + 'Charms ✨ (added)', '<span class="charm">' + signedKm(t.totals.charm, '+') + '</span>') +
-      stat(dot('var(--hex)') + 'Hexes 🧙 (taken off)', '<span class="hex">' + signedKm(t.totals.hex, '−') + '</span>') +
+      stat(dot(BONUS.color) + 'Presents 🎁 (added)', '<span class="charm">' + signedKm(t.totals.charm, '+') + '</span>') +
+      stat(dot('var(--hex)') + 'Pranks 😈 (taken off)', '<span class="hex">' + signedKm(t.totals.hex, '−') + '</span>') +
       '</div>';
 
     html += '<h3>Weekly totals (km, rounded)</h3><div class="table-scroll"><table class="compact"><thead><tr><th>Week</th>' +
-      DISCIPLINES.map((d) => '<th title="' + d.label + '">' + (d.short || d.label) + '</th>').join('') + '<th title="Charms">✨</th><th title="Hexes">🧙</th><th>Total</th></tr></thead><tbody>' +
+      DISCIPLINES.map((d) => '<th title="' + d.label + '">' + (d.short || d.label) + '</th>').join('') + '<th title="Presents">🎁</th><th title="Pranks">😈</th><th>Total</th></tr></thead><tbody>' +
       t.weekly.slice().reverse().map((w) => '<tr><td>' + esc(weekName(w.week)) + '</td>' +
         DISCIPLINES.map((d) => '<td' + (d.key === 'strength' ? ' title="' + sessions(w.strengthSessions) + '"' : '') + '>' + Math.round(w[d.key]) + '</td>').join('') +
         '<td>' + (w.charm ? charmText(Math.round(w.charm), '') : '–') + '</td>' +
@@ -289,7 +290,7 @@
   function renderWeekly() {
     const weeks = state.weeks;
     const head = '<thead><tr><th>Team</th>' + weeks.map((w) => '<th>' + esc(weekName(w)) + '</th>').join('') +
-      '<th>Charms</th><th>Hexes</th><th>Total</th></tr></thead>';
+      '<th>Presents</th><th>Pranks</th><th>Total</th></tr></thead>';
     const body = state.teams.map((t) => {
       const byWeek = Object.fromEntries(t.weekly.map((w) => [w.week, w.total]));
       return '<tr><td>' + esc(t.name) + '</td>' +
@@ -310,9 +311,9 @@
     const added = (t) => ADDS.reduce((sum, d) => sum + Math.max(0, t.totals[d.key]), 0);
     const max = Math.max(1, ...state.teams.map(added));
     const legend = '<div class="legend">' + ADDS.map((d) => '<span><i style="background:' + d.color + '"></i>' + d.label + '</span>').join('') +
-      '<span class="hex">🧙 Hexes are taken off the total</span></div>';
+      '<span class="hex">😈 Pranks are taken off the total</span></div>';
     const rows = state.teams.map((t) => '<div class="dbar-row"><div class="dbar-label"><span>' + esc(t.name) + '</span><span>' + km(t.totals.total) +
-      (t.totals.hex ? ' <span class="hex">(' + signedKm(t.totals.hex, '−') + ' hex)</span>' : '') + '</span></div>' +
+      (t.totals.hex ? ' <span class="hex">(' + signedKm(t.totals.hex, '−') + ' prank)</span>' : '') + '</span></div>' +
       '<div class="dbar">' + ADDS.map((d) => {
         const v = t.totals[d.key];
         return v > 0 ? '<span title="' + d.label + ': ' + v.toFixed(1) + ' km" style="width:' + ((v / max) * 100).toFixed(2) + '%;background:' + d.color + '"></span>' : '';
@@ -324,7 +325,7 @@
     const x = state.scale;
     const times = (n) => (n === 1 ? '' : ' × ' + num(n));
     return 'km = Run × ' + num(x.run) + ' + Virtual cycle' + times(x.virtualCycle) + ' + Outdoor cycle' + times(x.outdoorCycle) + ' + Swim × ' + num(x.swim) +
-      ' + Strength sessions × ' + num(x.strength) + ' + Charms − Hexes. Weeks run Sunday to Saturday.';
+      ' + Strength sessions × ' + num(x.strength) + ' + Presents − Pranks. Weeks run Sunday to Saturday.';
   }
 
   function renderStatus() {
