@@ -128,16 +128,20 @@
         return null;
       }
     };
-    // Shown at the normal view and closer, but not when zoomed right out to the
-    // whole world, so you have to go looking rather than spot all four at once.
-    const PRIZE_ZOOM = 3;
-    const layer = L.layerGroup();
-    const toggle = () => (map.getZoom() >= PRIZE_ZOOM ? layer.addTo(map) : layer.remove());
+    // Each snowflake only appears once you've zoomed in to its spot's level
+    // (set by the organiser), so it has to be hunted for.
+    const shown = [];
+    const toggle = () => {
+      for (const { spot, marker } of shown) {
+        if (map.getZoom() >= spot.zoom) marker.addTo(map);
+        else marker.remove();
+      }
+    };
     map.on('zoomend', toggle);
-    toggle();
     for (const spot of spots) {
-      const icon = L.divIcon({ className: 'hidden-prize', html: '<span>❄</span>', iconSize: [24, 24], iconAnchor: [12, 12] });
-      const marker = L.marker([spot.lat, spot.lon], { icon, keyboard: false, riseOnHover: true }).addTo(layer);
+      const icon = L.divIcon({ className: 'hidden-prize', html: '<span>❄</span>', iconSize: [18, 18], iconAnchor: [9, 9] });
+      const marker = L.marker([spot.lat, spot.lon], { icon, keyboard: false, riseOnHover: true });
+      shown.push({ spot, marker });
       const show = (html) =>
         L.popup({ maxWidth: 260, offset: [0, -4] }).setLatLng(marker.getLatLng()).setContent('<div class="np-popup">' + html + '</div>').openOn(map);
       // The finder's code is remembered (for this visit, and in this browser) so they can see it again.
@@ -158,6 +162,7 @@
         }
       });
     }
+    toggle();
   }
   const foundText = (spot, code, km) =>
     '<strong>🎉 You found the secret snowflake at ' + esc(spot.name) + '!</strong><br>Your prize code is<div class="np-code">' + esc(code) + '</div>' +

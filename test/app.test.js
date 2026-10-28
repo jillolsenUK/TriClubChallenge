@@ -352,7 +352,27 @@ test('each hidden prize goes to its first finder only, and a new code starts a n
   assert.ok(!JSON.stringify(computeState({ teams: {}, weeks: {}, prizes: data.prizes }, route, config)).includes(girona.code));
 });
 
-test('hidden prizes are worth 50 km, and Girona 100 km', () => {
-  const kms = Object.fromEntries(require('../src/config').prizes.map((p) => [p.id, p.km]));
-  assert.deepStrictEqual(kms, { 'north-pole': 50, 'hyde-park-sydney': 50, tenerife: 50, girona: 100 });
+// Reads the prize settings in a fresh process with the given environment variables.
+const prizeSettings = (env) =>
+  JSON.parse(
+    require('child_process').execFileSync(process.execPath, ['-e', "console.log(JSON.stringify(require('./src/config').prizes.map(({ id, km, zoom }) => ({ id, km, zoom }))))"], {
+      cwd: path.join(__dirname, '..'),
+      env: { PATH: process.env.PATH, ...env },
+    }),
+  );
+
+test('hidden prizes: 50 km each (Girona 100), appear at zoom 6, and each can be turned off or tuned', () => {
+  assert.deepStrictEqual(prizeSettings({}), [
+    { id: 'north-pole', km: 50, zoom: 6 },
+    { id: 'hyde-park-sydney', km: 50, zoom: 6 },
+    { id: 'tenerife', km: 50, zoom: 6 },
+    { id: 'girona', km: 100, zoom: 6 },
+  ]);
+  assert.deepStrictEqual(
+    prizeSettings({ SYDNEY_ENABLED: 'false', TENERIFE_ENABLED: 'Off', NORTH_POLE_ENABLED: 'true', PRIZE_ZOOM: '7', GIRONA_ZOOM: '9', GIRONA_KM: '150' }),
+    [
+      { id: 'north-pole', km: 50, zoom: 7 },
+      { id: 'girona', km: 150, zoom: 9 },
+    ],
+  );
 });

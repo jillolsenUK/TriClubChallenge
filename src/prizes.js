@@ -42,6 +42,6 @@ function claimPrize(data, spots, id, now = new Date()) {
 }
 
 // What the page needs to place the snowflakes: never the codes.
-const publicSpots = (spots) => spots.map(({ id, name, lat, lon, km }) => ({ id, name, lat, lon, km }));
+const publicSpots = (spots) => spots.map(({ id, name, lat, lon, km, zoom }) => ({ id, name, lat, lon, km, zoom }));
 
 module.exports = { ensurePrizes, claimPrize, publicSpots };

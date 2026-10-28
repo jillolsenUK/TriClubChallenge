@@ -2,6 +2,8 @@ const path = require('path');
 
 const env = process.env;
 const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+// On unless set to false/0/no/off.
+const enabled = (v) => !/^(false|0|no|off)$/i.test(String(v ?? '').trim());
 
 const sheetId = env.SHEET_ID || '1j1f2LI1zluWNUFeYprODvV0g6swACpYW1lss1ddDHf8';
 const sheetGid = env.SHEET_GID || '0';
@@ -29,19 +31,28 @@ module.exports = {
   adminKey: env.ADMIN_KEY || '',
   // Hidden map prizes. Each spot's code comes from its environment variable
   // (a random one if not set; codes are printed in the log). The finder can use
-  // the km as a charm for their team or a hex on another team. Each spot's km
-  // can be changed with e.g. GIRONA_KM; PRIZE_KM sets the rest.
-  prizes: [
+  // the km as a charm for their team or a hex on another team. Per spot (e.g. for
+  // Girona): GIRONA_ENABLED=false hides it, GIRONA_KM sets its km and GIRONA_ZOOM
+  // how far you must zoom in to see it. PRIZE_KM and PRIZE_ZOOM set the rest.
+  allPrizes: [
     { id: 'north-pole', name: 'the North Pole', lat: 84.6, lon: 0, env: 'NORTH_POLE_CODE', prefix: 'POLE' },
     { id: 'hyde-park-sydney', name: 'Hyde Park… in Sydney', lat: -33.8732, lon: 151.2111, env: 'SYDNEY_CODE', prefix: 'SYD' },
     { id: 'tenerife', name: 'Mount Teide, Tenerife', lat: 28.2724, lon: -16.6425, env: 'TENERIFE_CODE', prefix: 'TEIDE' },
     { id: 'girona', name: 'Girona', lat: 41.9866, lon: 2.8243, env: 'GIRONA_CODE', prefix: 'GIRONA', km: 100 },
-  ].map(({ env: codeVar, km, ...spot }) => ({
-    ...spot,
-    code: (env[codeVar] || '').trim(),
-    codeVar,
-    km: num(env[codeVar.replace(/_CODE$/, '_KM')], km ?? num(env.PRIZE_KM, 50)),
-  })),
+  ]
+    .map(({ env: codeVar, km, ...spot }) => {
+      const setting = (name) => env[codeVar.replace(/_CODE$/, '_' + name)];
+      return {
+        ...spot,
+        code: (env[codeVar] || '').trim(),
+        codeVar,
+        enabled: enabled(setting('ENABLED')),
+        km: num(setting('KM'), km ?? num(env.PRIZE_KM, 50)),
+        // Map zoom at which the snowflake appears: 3 is the normal view on a phone,
+        // 4 on a desktop; 6 means zooming right in on the right part of the map.
+        zoom: num(setting('ZOOM'), num(env.PRIZE_ZOOM, 6)),
+      };
+    }),
   // Weeks run Sunday to Saturday in this time zone (the sheet's weekly
   // columns are zeroed on Sunday).
   timeZone: env.TIME_ZONE || 'Europe/London',
@@ -82,3 +93,5 @@ module.exports = {
     ),
   },
 };
+// Spots turned off with e.g. GIRONA_ENABLED=false aren't shown and can't be claimed.
+module.exports.prizes = module.exports.allPrizes.filter((spot) => spot.enabled);

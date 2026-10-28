@@ -13,8 +13,12 @@ const store = new Store(config.dataDir, config.timeZone);
 if (ensurePrizes(store.data, config.prizes)) store.save();
 for (const spot of config.prizes) {
   const prize = store.data.prizes[spot.id];
-  console.log(`Hidden prize at ${spot.name}: code ${prize.code} (${spot.codeVar}), ${prize.claimedAt ? 'found ' + prize.claimedAt : 'not found yet'}`);
+  console.log(
+    `Hidden prize at ${spot.name}: code ${prize.code} (${spot.codeVar}), ${spot.km} km, appears at zoom ${spot.zoom}, ` +
+      (prize.claimedAt ? 'found ' + prize.claimedAt : 'not found yet'),
+  );
 }
+for (const spot of config.allPrizes.filter((s) => !s.enabled)) console.log(`Hidden prize at ${spot.name}: turned off`);
 
 let refreshing = null;
 let lastManualRefresh = 0;
