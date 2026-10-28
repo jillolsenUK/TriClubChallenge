@@ -103,8 +103,10 @@
     L.polyline(latlngs, { color: '#ffffff', weight: 3, opacity: 0.95, dashArray: '8 10', interactive: false }).addTo(map);
     map.fitBounds(line.getBounds(), { padding: [20, 20] });
     const flag = (txt) => L.divIcon({ className: '', html: '<div style="font-size:26px">' + txt + '</div>', iconSize: [24, 24], iconAnchor: [4, 22] });
+    // Santa at the finish, a bit bigger than the start flag, centred on the end of the route.
+    const santa = L.divIcon({ className: '', html: '<div class="santa">🎅</div>', iconSize: [44, 44], iconAnchor: [22, 22] });
     L.marker(latlngs[0], { icon: flag('🏁'), title: 'Start' }).addTo(map).bindTooltip('Start');
-    L.marker(latlngs[latlngs.length - 1], { icon: flag('🎅'), title: 'Finish' }).addTo(map).bindTooltip('Finish – ' + esc(route.name));
+    L.marker(latlngs[latlngs.length - 1], { icon: santa, title: 'Finish' }).addTo(map).bindTooltip('Finish – ' + esc(route.name));
     $('route-name').textContent = route.name + ' · ' + km(route.totalKm);
   }
 
