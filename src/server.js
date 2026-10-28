@@ -6,15 +6,15 @@ const { Store } = require('./store');
 const { fetchTeams, fetchMessage } = require('./sheet');
 const { computeState } = require('./race');
 const { fetchWorkbook, extractTeamImages, saveThumbnails } = require('./images');
-const { ensurePrize, claimPrize } = require('./northpole');
+const { ensurePrizes, claimPrize, publicSpots } = require('./prizes');
 
 const route = require('../route/route.json');
 const store = new Store(config.dataDir, config.timeZone);
-if (ensurePrize(store.data, config)) store.save();
-console.log(
-  `North Pole prize: code ${store.data.northPole.code}, ` +
-    (store.data.northPole.claimedAt ? `found ${store.data.northPole.claimedAt}` : 'not found yet'),
-);
+if (ensurePrizes(store.data, config.prizes)) store.save();
+for (const spot of config.prizes) {
+  const prize = store.data.prizes[spot.id];
+  console.log(`Hidden prize at ${spot.name}: code ${prize.code} (${spot.codeVar}), ${prize.claimedAt ? 'found ' + prize.claimedAt : 'not found yet'}`);
+}
 
 let refreshing = null;
 let lastManualRefresh = 0;
@@ -103,12 +103,14 @@ app.post('/api/refresh', async (req, res) => {
   res.json(computeState(store.data, route, config));
 });
 
-// The hidden North Pole prize: the first click gets the code.
-app.post('/api/north-pole', (req, res) => {
-  const result = claimPrize(store.data, config);
+// Hidden map prizes: where they are (no codes), and the first click on each gets its code.
+app.get('/api/prizes', (req, res) => res.json(publicSpots(config.prizes)));
+app.post('/api/prizes/:id', (req, res) => {
+  const result = claimPrize(store.data, config.prizes, req.params.id);
+  if (!result) return res.status(404).json({ error: 'No prize hidden there' });
   if (result.found) {
     store.save();
-    console.log(`North Pole prize found at ${store.data.northPole.claimedAt} (code ${result.code})`);
+    console.log(`Hidden prize at ${req.params.id} found at ${store.data.prizes[req.params.id].claimedAt} (code ${result.code})`);
   }
   res.set('Cache-Control', 'no-store').json(result);
 });

@@ -277,8 +277,8 @@ th { color: var(--muted); font-weight: 600; }
 .xmas-badge.photo { overflow: hidden; }
 .xmas-badge.photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .leaflet-tooltip.team-label { font-weight: 600; }
-.north-pole { color: #fff; font-size: 14px; line-height: 18px; text-align: center; opacity: 0.45; text-shadow: 0 0 2px rgba(0, 0, 0, 0.35); cursor: default; }
-.north-pole:hover { opacity: 0.9; }
+.hidden-prize { color: #fff; font-size: 14px; line-height: 18px; text-align: center; opacity: 0.45; text-shadow: 0 0 2px rgba(0, 0, 0, 0.35); cursor: default; }
+.hidden-prize:hover { opacity: 0.9; }
 .np-popup { font-size: 0.9rem; line-height: 1.4; text-align: center; }
 .np-code { font: 700 1.3rem/1.2 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.08em; margin: 8px 0; padding: 6px 8px; border-radius: 6px; background: #fff4d6; color: #7a4b00; user-select: all; }
 .santa { font-size: 40px; line-height: 44px; text-align: center; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4)); }

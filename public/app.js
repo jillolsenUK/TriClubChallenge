@@ -107,47 +107,59 @@
     const santa = L.divIcon({ className: '', html: '<div class="santa">🎅</div>', iconSize: [44, 44], iconAnchor: [22, 22] });
     L.marker(latlngs[0], { icon: flag('🏁'), title: 'Start' }).addTo(map).bindTooltip('Start');
     L.marker(latlngs[latlngs.length - 1], { icon: santa, title: 'Finish' }).addTo(map).bindTooltip('Finish – ' + esc(route.name));
-    hideNorthPolePrize();
+    hidePrizes();
     $('route-name').textContent = route.name + ' · ' + km(route.totalKm);
   }
 
-  // A faint snowflake at the top of the map (as far north as the map goes).
-  // The first person to click it gets a code for extra km from the server.
-  function hideNorthPolePrize() {
-    const icon = L.divIcon({ className: 'north-pole', html: '❄', iconSize: [18, 18], iconAnchor: [9, 9] });
-    const marker = L.marker([84.6, 0], { icon, keyboard: false, riseOnHover: true }).addTo(map);
-    const show = (html) =>
-      L.popup({ maxWidth: 260, offset: [0, -4] }).setLatLng(marker.getLatLng()).setContent('<div class="np-popup">' + html + '</div>').openOn(map);
-    // The finder's code is remembered (for this visit, and in this browser) so they can see it again.
-    let mine = (() => {
-      try { return localStorage.getItem('northPoleCode'); } catch (e) { return null; }
-    })();
-    let myKm = localStorageKm();
-    marker.on('click', async () => {
-      if (mine) return show(foundText(mine, myKm));
+  // Faint snowflakes hidden around the map (the server says where). The first
+  // person to click each gets that spot's code for extra km.
+  async function hidePrizes() {
+    let spots = [];
+    try {
+      spots = await (await fetch('api/prizes')).json();
+    } catch (e) {
+      return;
+    }
+    const remember = (id, value) => {
       try {
-        const res = await (await fetch('api/north-pole', { method: 'POST' })).json();
-        if (res.found) {
-          mine = res.code;
-          myKm = res.km;
-          try {
-            localStorage.setItem('northPoleCode', res.code);
-            localStorage.setItem('northPoleKm', String(res.km));
-          } catch (e) { /* the code is still shown below */ }
-          show(foundText(res.code, res.km));
-        } else {
-          show('<strong>🎅 Ho ho ho!</strong><br>You found the North Pole, but someone got here first and claimed the prize.');
-        }
+        if (value === undefined) return JSON.parse(localStorage.getItem('prize:' + id) || 'null');
+        localStorage.setItem('prize:' + id, JSON.stringify(value));
       } catch (e) {
-        show('The North Pole is snowed in. Try again in a moment.');
+        return null;
       }
-    });
+    };
+    // Only there once you've zoomed in past the normal view, so they have to be hunted for.
+    const PRIZE_ZOOM = 5;
+    const layer = L.layerGroup();
+    const toggle = () => (map.getZoom() >= PRIZE_ZOOM ? layer.addTo(map) : layer.remove());
+    map.on('zoomend', toggle);
+    toggle();
+    for (const spot of spots) {
+      const icon = L.divIcon({ className: 'hidden-prize', html: '❄', iconSize: [18, 18], iconAnchor: [9, 9] });
+      const marker = L.marker([spot.lat, spot.lon], { icon, keyboard: false, riseOnHover: true }).addTo(layer);
+      const show = (html) =>
+        L.popup({ maxWidth: 260, offset: [0, -4] }).setLatLng(marker.getLatLng()).setContent('<div class="np-popup">' + html + '</div>').openOn(map);
+      // The finder's code is remembered (for this visit, and in this browser) so they can see it again.
+      let mine = remember(spot.id);
+      marker.on('click', async () => {
+        if (mine) return show(foundText(spot, mine.code, mine.km));
+        try {
+          const res = await (await fetch('api/prizes/' + encodeURIComponent(spot.id), { method: 'POST' })).json();
+          if (res.found) {
+            mine = { code: res.code, km: res.km };
+            remember(spot.id, mine);
+            show(foundText(spot, res.code, res.km));
+          } else {
+            show('<strong>🎅 Ho ho ho!</strong><br>You found the secret snowflake at ' + esc(spot.name) + ', but someone got here first and claimed the prize.');
+          }
+        } catch (e) {
+          show('This snowflake is frozen solid. Try again in a moment.');
+        }
+      });
+    }
   }
-  const localStorageKm = () => {
-    try { return +localStorage.getItem('northPoleKm') || 50; } catch (e) { return 50; }
-  };
-  const foundText = (code, km) =>
-    '<strong>🎉 You found the North Pole!</strong><br>Your prize code is<div class="np-code">' + esc(code) + '</div>' +
+  const foundText = (spot, code, km) =>
+    '<strong>🎉 You found the secret snowflake at ' + esc(spot.name) + '!</strong><br>Your prize code is<div class="np-code">' + esc(code) + '</div>' +
     'Send it to the challenge organiser to claim <strong>' + km + ' km</strong> for your team. Only the first finder gets it, so keep it secret!';
 
   function updateMarkers() {

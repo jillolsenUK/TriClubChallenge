@@ -8,7 +8,7 @@
 //   lastWeek: the week the previous refresh saved into
 //   message: the banner text from the sheet's Message tab
 //   images: { [normalised team name]: { file, large, name } } pictures from the Images tab
-//   northPole: { code, claimedAt } the hidden map prize
+//   prizes: { [spot id]: { code, claimedAt } } the hidden map prizes
 //   lastFetch, lastError
 // `weekly`/`total` hold the raw sheet values; km are worked out in race.js.
 
