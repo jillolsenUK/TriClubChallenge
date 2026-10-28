@@ -3,7 +3,7 @@ const path = require('path');
 const express = require('express');
 const config = require('./config');
 const { Store } = require('./store');
-const { fetchSheet, fetchMessage, extractTeams } = require('./sheet');
+const { fetchTeams, fetchMessage } = require('./sheet');
 const { computeState } = require('./race');
 const { fetchWorkbook, extractTeamImages, saveThumbnails } = require('./images');
 
@@ -17,8 +17,7 @@ async function refresh() {
   if (refreshing) return refreshing;
   refreshing = (async () => {
     try {
-      const rows = await fetchSheet();
-      const { teams } = extractTeams(rows);
+      const { teams } = await fetchTeams();
       store.applyRows(teams);
       const { validation } = computeState(store.data, route, config);
       for (const m of validation.mismatches) {

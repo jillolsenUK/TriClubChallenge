@@ -20,9 +20,10 @@
   ];
   const DISCIPLINES = [
     { key: 'run', label: 'Run', color: '#e4572e' },
-    { key: 'cycle', label: 'Cycle', color: '#17a2a0' },
+    { key: 'virtualCycle', label: 'Virtual cycle', short: 'V-cyc', color: '#0f766e' },
+    { key: 'outdoorCycle', label: 'Outdoor cycle', short: 'O-cyc', color: '#4cc3b5' },
     { key: 'swim', label: 'Swim', color: '#2e6fde' },
-    { key: 'strength', label: 'Strength', color: '#e0a800' },
+    { key: 'strength', label: 'Strength', short: 'Str', color: '#e0a800' },
   ];
   // Everything that adds km: the disciplines plus charms. Hexes are taken off.
   const BONUS = { key: 'charm', label: 'Charms ✨', color: '#8e44ad' };
@@ -201,13 +202,13 @@
       stat(dot('var(--hex)') + 'Hexes 🧙 (taken off)', '<span class="hex">' + signedKm(t.totals.hex, '−') + '</span>') +
       '</div>';
 
-    html += '<h3>Weekly totals (km)</h3><div class="table-scroll"><table class="compact"><thead><tr><th>Week</th>' +
-      DISCIPLINES.map((d) => '<th>' + d.label + '</th>').join('') + '<th>Charm</th><th>Hex</th><th>Total</th></tr></thead><tbody>' +
+    html += '<h3>Weekly totals (km, rounded)</h3><div class="table-scroll"><table class="compact"><thead><tr><th>Week</th>' +
+      DISCIPLINES.map((d) => '<th title="' + d.label + '">' + (d.short || d.label) + '</th>').join('') + '<th title="Charms">✨</th><th title="Hexes">🧙</th><th>Total</th></tr></thead><tbody>' +
       t.weekly.slice().reverse().map((w) => '<tr><td>' + esc(weekName(w.week)) + '</td>' +
-        DISCIPLINES.map((d) => '<td' + (d.key === 'strength' ? ' title="' + sessions(w.strengthSessions) + '"' : '') + '>' + num(w[d.key]) + '</td>').join('') +
-        '<td>' + (w.charm ? charmText(w.charm, '') : '–') + '</td>' +
-        '<td>' + (w.hex ? hexText(w.hex, '') : '–') + '</td>' +
-        '<td><strong>' + num(w.total) + '</strong></td></tr>').join('') +
+        DISCIPLINES.map((d) => '<td' + (d.key === 'strength' ? ' title="' + sessions(w.strengthSessions) + '"' : '') + '>' + Math.round(w[d.key]) + '</td>').join('') +
+        '<td>' + (w.charm ? charmText(Math.round(w.charm), '') : '–') + '</td>' +
+        '<td>' + (w.hex ? hexText(Math.round(w.hex), '') : '–') + '</td>' +
+        '<td><strong>' + Math.round(w.total) + '</strong></td></tr>').join('') +
       '</tbody></table></div>' +
       '<p class="muted" style="font-size:.75rem">' + formula() + '</p>';
     el.innerHTML = html;
@@ -249,7 +250,8 @@
 
   function formula() {
     const x = state.scale;
-    return 'km = Run × ' + num(x.run) + ' + Cycle' + (x.cycle === 1 ? '' : ' × ' + num(x.cycle)) + ' + Swim × ' + num(x.swim) +
+    const times = (n) => (n === 1 ? '' : ' × ' + num(n));
+    return 'km = Run × ' + num(x.run) + ' + Virtual cycle' + times(x.virtualCycle) + ' + Outdoor cycle' + times(x.outdoorCycle) + ' + Swim × ' + num(x.swim) +
       ' + Strength sessions × ' + num(x.strength) + ' + Charms − Hexes. Weeks run Sunday to Saturday.';
   }
 

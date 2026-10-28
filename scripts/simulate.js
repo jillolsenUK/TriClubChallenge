@@ -3,7 +3,7 @@
 // reading/saving/scoring code against it, then checks every saved week and
 // total against what the sheet's own formulas say.
 //
-// Starts from test/fixtures/sheet-2026-11-26.csv (a copy of the real sheet)
+// Starts from test/fixtures/data-tab-2026-11-26.csv (a copy of the real sheet's Data tab)
 // and simulates up to Christmas Eve:
 //   - teams log activities at random times; each one goes into both the
 //     "-week" and the "-total" columns, as the organiser does
@@ -35,12 +35,13 @@ const { weekStart, weekLabel } = require('../src/weeks');
 const route = require('../route/route.json');
 
 // ---- the spreadsheet ----
-const fixture = parseCsv(fs.readFileSync(path.join(__dirname, '..', 'test', 'fixtures', 'sheet-2026-11-26.csv'), 'utf8'));
+const fixture = parseCsv(fs.readFileSync(path.join(__dirname, '..', 'test', 'fixtures', 'data-tab-2026-11-26.csv'), 'utf8'));
 const HEADER = fixture[0];
 const col = (name) => HEADER.indexOf(name);
 const C = {
   run: ['Run-total', 'Run-week'],
-  cycle: ['Cycle-Total', 'Cycle-week'],
+  virtualCycle: ['Virtual-Cycle Total', 'Virtual-Cycle-week'],
+  outdoorCycle: ['Outdoor-Cycle-Total', 'Outdoor Cycle-week'],
   swim: ['Swim-Total', 'swim-week'],
   strength: ['Strength-total', 'Strength-week'],
   charm: ['Charm-total', 'Charm-week'],
@@ -49,17 +50,21 @@ const C = {
 const WEEKLY_CALC = col('Weekly Total (Calulated)');
 const CHALLENGE_CALC = col('Challenge Total (Calulated)');
 const rows = fixture.slice(1).filter((r) => r[0]);
-// Which rows have the organiser's formulas (Team 10 has no weekly formula; 11-17 have none).
+// Which rows have the organiser's formulas (now every row; earlier copies had gaps).
 const formulas = rows.map((r) => ({ weekly: r[WEEKLY_CALC] !== '', challenge: r[CHALLENGE_CALC] !== '' }));
 
 const n = (v) => (v === '' || v == null ? 0 : +v);
 const cell = (r, name) => n(r[col(name)]);
 const add = (r, name, v) => (r[col(name)] = String(+(cell(r, name) + v).toFixed(2)));
 // The sheet's own formulas, copied from the workbook.
+//   Weekly:    =((I2*4)+(J2*0.8)+K2+(M2*25)+(L2*26)+N2)-O2
+//   Challenge: =((B2*4)+(C2*0.8)+D2+(E2*26)+(F2*25)+G2)-H2
 const weeklyFormula = (r) =>
-  cell(r, 'Run-week') * 4 + cell(r, 'Cycle-week') + cell(r, 'Strength-week') * 25 + cell(r, 'swim-week') * 26 + cell(r, 'Charm-week') - cell(r, 'Hex-Week');
+  cell(r, 'Run-week') * 4 + cell(r, 'Virtual-Cycle-week') * 0.8 + cell(r, 'Outdoor Cycle-week') + cell(r, 'Strength-week') * 25 +
+  cell(r, 'swim-week') * 26 + cell(r, 'Charm-week') - cell(r, 'Hex-Week');
 const challengeFormula = (r) =>
-  cell(r, 'Run-total') * 4 + cell(r, 'Cycle-Total') + cell(r, 'Swim-Total') * 26 + cell(r, 'Strength-total') * 25 + cell(r, 'Charm-total') - cell(r, 'Hex-total');
+  cell(r, 'Run-total') * 4 + cell(r, 'Virtual-Cycle Total') * 0.8 + cell(r, 'Outdoor-Cycle-Total') + cell(r, 'Swim-Total') * 26 +
+  cell(r, 'Strength-total') * 25 + cell(r, 'Charm-total') - cell(r, 'Hex-total');
 
 function sheetCsv() {
   const out = [HEADER];
@@ -133,8 +138,8 @@ for (let day = at('2026-11-26T00:00:00Z'); day < END; day += DAY) {
       // Normal activities land between 07:00 and 22:00; on Sundays only after the reset.
       const t = day + between(weekday === 0 ? 11 * 60 : 7 * 60, 22 * 60) * MIN;
       if (t <= START || t >= END || !isActive(i, t)) continue;
-      const field = pick(['run', 'run', 'cycle', 'cycle', 'swim', 'strength']);
-      const amount = { run: between(3, 15), cycle: between(15, 80), swim: between(0.5, 2.5), strength: 1 }[field];
+      const field = pick(['run', 'run', 'virtualCycle', 'outdoorCycle', 'outdoorCycle', 'swim', 'strength']);
+      const amount = { run: between(3, 15), virtualCycle: between(15, 60), outdoorCycle: between(15, 80), swim: between(0.5, 2.5), strength: 1 }[field];
       events.push({ t, ...log(i, field, amount) });
     }
     // Sunday morning, before the reset: Saturday's run, logged late.

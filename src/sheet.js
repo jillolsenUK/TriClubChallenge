@@ -1,5 +1,5 @@
 // Reads the public Google Sheet as CSV and turns it into one entry per team:
-//   { key, name, weekly: {run, cycle, swim, strength, charm, hex},
+//   { key, name, weekly: {run, virtualCycle, outdoorCycle, swim, strength, charm, hex},
 //     total: {...same fields...} | null, sheetWeeklyTotal, sheetChallengeTotal }
 // The sheet has a "weekly" column (zeroed every Sunday) and a challenge
 // "total" column for each field. Columns are found by header name, so the
@@ -41,17 +41,23 @@ function parseCsv(text) {
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+const has = (...words) => (x) => words.some((w) => x.includes(w));
+const isVirtual = has('virtual', 'indoor', 'zwift', 'turbo');
+// Which headers belong to each field (headers are lower-cased with spaces and
+// punctuation removed, e.g. "Virtual-Cycle Total" -> "virtualcycletotal").
 const FIELDS = {
-  run: ['run', 'running'],
-  cycle: ['cycle', 'cycling', 'bike', 'ride'],
-  swim: ['swim', 'swimming'],
-  strength: ['strength', 'gym', 'weights'],
+  run: has('run'),
+  virtualCycle: isVirtual,
+  // "Outdoor-Cycle-Total", or a plain "Cycle-Total" from before virtual cycling was split out.
+  outdoorCycle: (x) => !isVirtual(x) && has('cycle', 'bike', 'ride')(x),
+  swim: has('swim'),
+  strength: has('strength', 'gym', 'weights'),
   // Bonus (charm) and penalty (hex) km, applied on top of the disciplines.
-  charm: ['charm'],
-  hex: ['hex'],
+  charm: has('charm'),
+  hex: has('hex'),
 };
 const FIELD_KEYS = Object.keys(FIELDS);
-const DISCIPLINE_KEYS = ['run', 'cycle', 'swim', 'strength'];
+const DISCIPLINE_KEYS = ['run', 'virtualCycle', 'outdoorCycle', 'swim', 'strength'];
 
 const isWeekly = (x) => x.includes('week') && !x.includes('challenge');
 const isTotal = (x) => (x.includes('total') || x.includes('challenge')) && !x.includes('week');
@@ -64,14 +70,14 @@ function mapColumns(header) {
   const byName = (name) => h.indexOf(norm(name));
   const cols = { weekly: {}, total: {} };
 
-  for (const [key, words] of Object.entries(FIELDS)) {
+  for (const [key, matches] of Object.entries(FIELDS)) {
     const o = config.columns;
     if (o[key + 'Weekly'] || o[key + 'Total']) {
       cols.weekly[key] = o[key + 'Weekly'] ? byName(o[key + 'Weekly']) : -1;
       cols.total[key] = o[key + 'Total'] ? byName(o[key + 'Total']) : -1;
       continue;
     }
-    const candidates = h.map((x, i) => (words.some((w) => x.includes(w)) ? i : -1)).filter((i) => i >= 0);
+    const candidates = h.map((x, i) => (matches(x) ? i : -1)).filter((i) => i >= 0);
     let weekly = candidates.find((i) => isWeekly(h[i]));
     let total = candidates.find((i) => isTotal(h[i]));
     // Fall back to a bare "Run" column next to "Run-Total" (or vice versa).
@@ -83,7 +89,7 @@ function mapColumns(header) {
     cols.total[key] = total ?? -1;
   }
 
-  const noField = (x) => !FIELD_KEYS.some((k) => FIELDS[k].some((w) => x.includes(w)));
+  const noField = (x) => !FIELD_KEYS.some((k) => FIELDS[k](x));
   cols.sheetWeeklyTotal = config.columns.weeklyCalculated
     ? byName(config.columns.weeklyCalculated)
     : h.findIndex((x) => noField(x) && x.includes('week') && x.includes('total'));
@@ -176,6 +182,18 @@ async function fetchCsv(url) {
 }
 
 const fetchSheet = () => fetchCsv(config.sheetCsvUrl);
+
+// The team figures. The download normally gets the Data tab by its fixed tab
+// id; if that doesn't have the team columns (say the tabs were rearranged),
+// look the tab up by name instead.
+async function fetchTeams() {
+  try {
+    return extractTeams(await fetchSheet());
+  } catch (err) {
+    if (!config.dataTabCsvUrl) throw err;
+    return extractTeams(await fetchCsv(config.dataTabCsvUrl));
+  }
+}
 async function fetchMessage() {
   for (const url of config.messageCsvUrls) {
     const text = extractMessage(await fetchCsv(url));
@@ -184,4 +202,4 @@ async function fetchMessage() {
   return null;
 }
 
-module.exports = { parseCsv, mapColumns, extractTeams, extractMessage, fetchSheet, fetchMessage, toNumber, FIELD_KEYS };
+module.exports = { parseCsv, mapColumns, extractTeams, extractMessage, fetchSheet, fetchTeams, fetchMessage, toNumber, FIELD_KEYS };

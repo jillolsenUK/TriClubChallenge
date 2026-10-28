@@ -3,7 +3,7 @@
 London Frontrunners' Christmas challenge: a virtual team race along the **Finding Santa** GPX route (Hyde Park, London → Lapland, 3,539 km).
 Team figures are read from a public Google Sheet. A team's distance along the route is
 
-**Run × 4 + Cycle + Swim × 26 + Strength sessions × 25 + Charms − Hexes**
+**Run × 4 + Virtual cycle × 0.8 + Outdoor cycle + Swim × 26 + Strength sessions × 25 + Charms − Hexes**
 
 worked out from the sheet's challenge **total** columns, the same formula as its `Challenge Total (Calulated)` column.
 Each week's figures (from the **weekly** columns) are saved too, so the app shows a week-by-week history.
@@ -21,8 +21,9 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
 ## How it works
 
 - The server downloads the sheet as CSV every `REFRESH_MINUTES` (default 15), on startup, and when someone clicks **Refresh**.
-- **Columns** are found by header name, not position. The sheet has a `Team Name` column and, for each of Run, Cycle,
-  Swim, Strength, Charm and Hex, a total column (`Run-total`, `Cycle-Total`, …) and a weekly column (`Run-week`,
+- **Columns** are found by header name, not position, on the `Data` tab. It has a `Team Name` column and, for each of
+  Run, Virtual cycle, Outdoor cycle, Swim, Strength, Charm and Hex, a total column (`Run-total`, `Virtual-Cycle Total`,
+  `Outdoor-Cycle-Total`, …) and a weekly column (`Run-week`, `Virtual-Cycle-week`, `Outdoor Cycle-week`,
   `swim-week`, …). Strength is a number of sessions. Charms are km added and hexes are km taken off (written as `50` or
   `-50`, either way). A team can't be pushed back past the start. The header row can sit below title rows.
 - **Weeks** run Sunday to Saturday (UK time). The sheet zeroes its weekly columns on Sunday; until it has, Sunday's
@@ -67,7 +68,8 @@ npm test
 | `TIME_ZONE` | `Europe/London` | Time zone for the Sunday-to-Saturday weeks |
 | `VALIDATION_TOLERANCE` | `0.5` | Largest km difference from the sheet's calculated totals still counted as a match |
 | `TEAM_KEY` | `slot` | `slot` (row position) or `name` |
-| `SCALE_RUN`, `SCALE_CYCLE`, `SCALE_SWIM`, `SCALE_STRENGTH` | `4`, `1`, `26`, `25` | km per unit of each sheet value |
+| `SCALE_RUN`, `SCALE_VIRTUAL_CYCLE`, `SCALE_OUTDOOR_CYCLE`, `SCALE_SWIM`, `SCALE_STRENGTH` | `4`, `0.8`, `1`, `26`, `25` | km per unit of each sheet value |
+| `DATA_SHEET` | `Data` | Tab with the team figures, used if the usual download doesn't find them |
 | `COL_TEAM`, `COL_TEAM_ID`, `COL_RUN_WEEKLY`, `COL_RUN_TOTAL` (and the same for `CYCLE`, `SWIM`, `STRENGTH`, `CHARM`, `HEX`), `COL_WEEKLY_CALCULATED`, `COL_CHALLENGE_CALCULATED` | auto | Exact header names, if auto-detection picks the wrong column |
 | `MESSAGE_SHEET` | `Message`, then `Sheet2`, `Sheet 2` | Tab holding the banner message (`Message` in A1, the text in A2) |
 | `MESSAGE_CSV_URL` | – | Use any CSV URL for the banner message instead |
@@ -107,7 +109,7 @@ Then deploy either way:
 ## Simulating the challenge
 
 `npm run simulate -- [outDir] [--seed=N] [--refresh=15]` plays the spreadsheet forward from
-`test/fixtures/sheet-2026-11-26.csv` to Christmas Eve, running the app's real code against it. Teams log
+`test/fixtures/data-tab-2026-11-26.csv` to Christmas Eve, running the app's real code against it. Teams log
 activities, charms and hexes are handed out, placeholder teams are renamed, late Saturday entries arrive on Sunday
 morning and the `-week` columns are zeroed at 10:00 every Sunday. The app reads the sheet every 15 minutes. It then
 compares every saved week with the sheet's `Weekly Total (Calulated)` and every team's total with

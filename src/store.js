@@ -1,8 +1,8 @@
 // JSON file store for teams and their weekly figures.
-// Shape (version 2):
+// Shape (version 4):
 //   teams: { [key]: { key, name, styleIndex, firstSeen, lastSeen, previousNames: [],
 //                     latest: { weekly, total, sheetWeeklyTotal, sheetChallengeTotal, at } } }
-//   weeks: { [sundayDate]: { [teamKey]: { run, cycle, swim, strength, charm, hex,
+//   weeks: { [sundayDate]: { [teamKey]: { run, virtualCycle, outdoorCycle, swim, strength, charm, hex,
 //                                         sheetWeeklyTotal, updatedAt } } }
 //   resetSeen: { [sundayDate]: true }  (the sheet's weekly columns have been zeroed for that week)
 //   lastWeek: the week the previous refresh saved into
@@ -15,8 +15,16 @@ const fs = require('fs');
 const path = require('path');
 const { weekStart, previousWeek, isSunday, isWeekKey } = require('./weeks');
 
-const FIELDS = ['run', 'cycle', 'swim', 'strength', 'charm', 'hex'];
-const VERSION = 3;
+const FIELDS = ['run', 'virtualCycle', 'outdoorCycle', 'swim', 'strength', 'charm', 'hex'];
+const VERSION = 4;
+
+// Before version 4 there was one "cycle" field; it's what's now outdoor cycling (no multiplier).
+function splitCycle(o) {
+  if (!o || !('cycle' in o)) return;
+  o.outdoorCycle = (o.outdoorCycle || 0) + (o.cycle || 0);
+  o.virtualCycle = o.virtualCycle || 0;
+  delete o.cycle;
+}
 
 class Store {
   constructor(dir, timeZone = 'Europe/London') {
@@ -36,6 +44,13 @@ class Store {
       // that never happened (rows were matched up wrongly), so start the name
       // history afresh.
       if ((saved.version || 0) < 3) for (const t of Object.values(saved.teams || {})) t.previousNames = [];
+      if ((saved.version || 0) < 4) {
+        for (const w of Object.values(saved.weeks || {})) for (const e of Object.values(w)) splitCycle(e);
+        for (const t of Object.values(saved.teams || {})) {
+          splitCycle(t.latest?.weekly);
+          splitCycle(t.latest?.total);
+        }
+      }
       saved.version = VERSION;
       this.data = { ...this.data, ...saved };
     }

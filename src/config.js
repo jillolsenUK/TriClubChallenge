@@ -9,6 +9,10 @@ const sheetGid = env.SHEET_GID || '0';
 module.exports = {
   port: num(env.PORT, 3000),
   sheetCsvUrl: env.SHEET_CSV_URL || `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${sheetGid}`,
+  // Fallback: the figures' tab looked up by name.
+  dataTabCsvUrl: env.SHEET_CSV_URL
+    ? ''
+    : `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(env.DATA_SHEET || 'Data')}`,
   // The banner message: cell A2 under a "Message" header, on the first of these tabs that has one.
   messageCsvUrls: env.MESSAGE_CSV_URL
     ? [env.MESSAGE_CSV_URL]
@@ -38,7 +42,8 @@ module.exports = {
   // hexes taken off as they are.
   scale: {
     run: num(env.SCALE_RUN, 4),
-    cycle: num(env.SCALE_CYCLE, 1),
+    virtualCycle: num(env.SCALE_VIRTUAL_CYCLE, 0.8),
+    outdoorCycle: num(env.SCALE_OUTDOOR_CYCLE, num(env.SCALE_CYCLE, 1)),
     swim: num(env.SCALE_SWIM, 26),
     strength: num(env.SCALE_STRENGTH, 25),
   },
@@ -50,12 +55,15 @@ module.exports = {
     id: env.COL_TEAM_ID || '',
     weeklyCalculated: env.COL_WEEKLY_CALCULATED || '',
     challengeCalculated: env.COL_CHALLENGE_CALCULATED || '',
-    // e.g. COL_RUN_WEEKLY="Run (Week)", COL_RUN_TOTAL="Run-Total"
+    // e.g. COL_RUN_WEEKLY="Run (Week)", COL_VIRTUAL_CYCLE_TOTAL="Virtual-Cycle Total"
     ...Object.fromEntries(
-      ['run', 'cycle', 'swim', 'strength', 'charm', 'hex'].flatMap((k) => [
-        [k + 'Weekly', env[`COL_${k.toUpperCase()}_WEEKLY`] || ''],
-        [k + 'Total', env[`COL_${k.toUpperCase()}_TOTAL`] || ''],
-      ]),
+      ['run', 'virtualCycle', 'outdoorCycle', 'swim', 'strength', 'charm', 'hex'].flatMap((k) => {
+        const name = k.replace(/[A-Z]/g, (c) => '_' + c).toUpperCase();
+        return [
+          [k + 'Weekly', env[`COL_${name}_WEEKLY`] || ''],
+          [k + 'Total', env[`COL_${name}_TOTAL`] || ''],
+        ];
+      }),
     ),
   },
 };

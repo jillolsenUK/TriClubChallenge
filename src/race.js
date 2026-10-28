@@ -1,6 +1,6 @@
 // Turns stored sheet values into km and race standings along the route.
 //
-// km = Run×4 + Cycle + Swim×26 + Strength×25 + Charm − Hex
+// km = Run×4 + Virtual cycle×0.8 + Outdoor cycle + Swim×26 + Strength×25 + Charm − Hex
 // (multipliers from config.scale), the same formula as the sheet's
 // "Challenge Total (Calculated)" column, which we check our sums against.
 
@@ -9,7 +9,7 @@ const { weekLabel, weekNumber } = require('./weeks');
 
 const normName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-const DISCIPLINES = ['run', 'cycle', 'swim', 'strength'];
+const DISCIPLINES = ['run', 'virtualCycle', 'outdoorCycle', 'swim', 'strength'];
 const FIELDS = [...DISCIPLINES, 'charm', 'hex'];
 
 // Raw sheet values -> km for each field plus the combined total.
