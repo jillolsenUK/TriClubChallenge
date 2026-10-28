@@ -36,7 +36,7 @@ module.exports = {
   // how far you must zoom in to see it. PRIZE_KM and PRIZE_ZOOM set the rest.
   allPrizes: [
     { id: 'north-pole', name: 'the North Pole', lat: 84.6, lon: 0, env: 'NORTH_POLE_CODE', prefix: 'POLE' },
-    { id: 'hyde-park-sydney', name: 'Hyde Park… in Sydney', lat: -33.8732, lon: 151.2111, env: 'SYDNEY_CODE', prefix: 'SYD' },
+    { id: 'hyde-park-sydney', name: 'Hyde Park… in Sydney', lat: -33.87085, lon: 151.21104, env: 'SYDNEY_CODE', prefix: 'SYD' },
     { id: 'tenerife', name: 'Mount Teide, Tenerife', lat: 28.2724, lon: -16.6425, env: 'TENERIFE_CODE', prefix: 'TEIDE' },
     { id: 'girona', name: 'Girona', lat: 41.9866, lon: 2.8243, env: 'GIRONA_CODE', prefix: 'GIRONA', km: 100 },
   ]
