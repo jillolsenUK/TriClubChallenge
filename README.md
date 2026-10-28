@@ -48,6 +48,17 @@ Each week's figures (from the **weekly** columns) are saved too, so the app show
   the first 110 teams all have different combinations.
 - Data is stored in `store.json` in `DATA_DIR`. On Azure this defaults to `/home/data`, which persists across restarts and redeployments.
 
+## The North Pole prize
+
+A faint ❄ is hidden at the top of the map (as far north as the map goes, about 84.5°N; it's off-screen on the normal
+view). The **first** person to click it gets a prize code worth `NORTH_POLE_KM` (50) km; anyone after that is told
+someone got there first, and the finder sees their code again if they click again in the same browser. They send the
+code to the organiser, who adds the km as a Charm for that team.
+
+The code is never in the page; only the server knows it. Set `NORTH_POLE_CODE` in the Azure environment variables to
+choose it. Without it, a random code like `POLE-7KX2MQ` is made, and the app's log shows it at startup. The log also
+records when it's found. Setting a new `NORTH_POLE_CODE` hides a fresh prize for another hunt.
+
 ## Run locally
 
 ```bash
@@ -76,6 +87,8 @@ npm test
 | `IMAGES_SHEET` | `Images` | Tab holding the team pictures |
 | `IMAGES_REFRESH_MINUTES` | `60` | How often to re-read the team pictures |
 | `IMAGES_XLSX_URL` | – | Use any `.xlsx` URL for the team pictures instead |
+| `NORTH_POLE_CODE` | random, shown in the log | The hidden prize's code; a new value starts a new hunt |
+| `NORTH_POLE_KM` | `50` | km the prize is worth (shown to the finder) |
 | `ADMIN_KEY` | – | If set, the Refresh button asks for this key |
 | `DATA_DIR` | `./data` (`/home/data` on Azure) | Where `store.json` is kept |
 

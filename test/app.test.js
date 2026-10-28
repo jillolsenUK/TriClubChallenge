@@ -10,6 +10,7 @@ const { computeState } = require('../src/race');
 const { positionAt } = require('../src/geo');
 const { weekStart, isSunday, weekLabel } = require('../src/weeks');
 const { extractTeamImages, saveThumbnails } = require('../src/images');
+const { ensurePrize, claimPrize } = require('../src/northpole');
 const { zipSync, strToU8 } = require('fflate');
 const sharp = require('sharp');
 
@@ -326,4 +327,20 @@ test('team pictures are read from the Images tab and matched to the header above
   const byName = Object.fromEntries(computeState(data, route, config).teams.map((t) => [t.name, t.image]));
   assert.strictEqual(byName["Lapping' Around the Christmas Tree"], 'team-images/' + saved.lappingaroundthechristmastree.file);
   assert.strictEqual(byName['Team 3'], null);
+});
+
+test('the North Pole prize goes to the first finder only, and a new code starts a new hunt', () => {
+  const data = {};
+  const cfg = { northPoleCode: 'SANTA-50', northPoleKm: 50 };
+  assert.deepStrictEqual(claimPrize(data, cfg, new Date('2026-11-05T10:00:00Z')), { found: true, code: 'SANTA-50', km: 50 });
+  assert.deepStrictEqual(claimPrize(data, cfg), { found: false, claimedAt: '2026-11-05T10:00:00.000Z', km: 50 });
+  // Changing the code re-hides the prize.
+  assert.strictEqual(claimPrize(data, { ...cfg, northPoleCode: 'ELF-77' }).code, 'ELF-77');
+  // Without a configured code a random one is made, and kept.
+  const d2 = {};
+  ensurePrize(d2, { northPoleCode: '' });
+  assert.match(d2.northPole.code, /^POLE-[A-HJ-NP-Z2-9]{6}$/);
+  assert.strictEqual(ensurePrize(d2, { northPoleCode: '' }), false);
+  // The code is never part of the state sent to every page.
+  assert.ok(!JSON.stringify(computeState({ teams: {}, weeks: {}, northPole: d2.northPole }, route, config)).includes(d2.northPole.code));
 });

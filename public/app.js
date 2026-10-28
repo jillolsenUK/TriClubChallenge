@@ -107,8 +107,48 @@
     const santa = L.divIcon({ className: '', html: '<div class="santa">🎅</div>', iconSize: [44, 44], iconAnchor: [22, 22] });
     L.marker(latlngs[0], { icon: flag('🏁'), title: 'Start' }).addTo(map).bindTooltip('Start');
     L.marker(latlngs[latlngs.length - 1], { icon: santa, title: 'Finish' }).addTo(map).bindTooltip('Finish – ' + esc(route.name));
+    hideNorthPolePrize();
     $('route-name').textContent = route.name + ' · ' + km(route.totalKm);
   }
+
+  // A faint snowflake at the top of the map (as far north as the map goes).
+  // The first person to click it gets a code for extra km from the server.
+  function hideNorthPolePrize() {
+    const icon = L.divIcon({ className: 'north-pole', html: '❄', iconSize: [18, 18], iconAnchor: [9, 9] });
+    const marker = L.marker([84.6, 0], { icon, keyboard: false, riseOnHover: true }).addTo(map);
+    const show = (html) =>
+      L.popup({ maxWidth: 260, offset: [0, -4] }).setLatLng(marker.getLatLng()).setContent('<div class="np-popup">' + html + '</div>').openOn(map);
+    // The finder's code is remembered (for this visit, and in this browser) so they can see it again.
+    let mine = (() => {
+      try { return localStorage.getItem('northPoleCode'); } catch (e) { return null; }
+    })();
+    let myKm = localStorageKm();
+    marker.on('click', async () => {
+      if (mine) return show(foundText(mine, myKm));
+      try {
+        const res = await (await fetch('api/north-pole', { method: 'POST' })).json();
+        if (res.found) {
+          mine = res.code;
+          myKm = res.km;
+          try {
+            localStorage.setItem('northPoleCode', res.code);
+            localStorage.setItem('northPoleKm', String(res.km));
+          } catch (e) { /* the code is still shown below */ }
+          show(foundText(res.code, res.km));
+        } else {
+          show('<strong>🎅 Ho ho ho!</strong><br>You found the North Pole, but someone got here first and claimed the prize.');
+        }
+      } catch (e) {
+        show('The North Pole is snowed in. Try again in a moment.');
+      }
+    });
+  }
+  const localStorageKm = () => {
+    try { return +localStorage.getItem('northPoleKm') || 50; } catch (e) { return 50; }
+  };
+  const foundText = (code, km) =>
+    '<strong>🎉 You found the North Pole!</strong><br>Your prize code is<div class="np-code">' + esc(code) + '</div>' +
+    'Send it to the challenge organiser to claim <strong>' + km + ' km</strong> for your team. Only the first finder gets it, so keep it secret!';
 
   function updateMarkers() {
     const seen = new Set();

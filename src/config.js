@@ -27,6 +27,10 @@ module.exports = {
   dataDir: env.DATA_DIR || (env.WEBSITE_SITE_NAME ? '/home/data' : path.join(__dirname, '..', 'data')),
   refreshMinutes: num(env.REFRESH_MINUTES, 15),
   adminKey: env.ADMIN_KEY || '',
+  // The hidden North Pole prize: the code the first finder gets (a random one if
+  // not set; it's printed in the log) and how many km it's worth.
+  northPoleCode: (env.NORTH_POLE_CODE || '').trim(),
+  northPoleKm: num(env.NORTH_POLE_KM, 50),
   // Weeks run Sunday to Saturday in this time zone (the sheet's weekly
   // columns are zeroed on Sunday).
   timeZone: env.TIME_ZONE || 'Europe/London',

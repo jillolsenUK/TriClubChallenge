@@ -6,9 +6,15 @@ const { Store } = require('./store');
 const { fetchTeams, fetchMessage } = require('./sheet');
 const { computeState } = require('./race');
 const { fetchWorkbook, extractTeamImages, saveThumbnails } = require('./images');
+const { ensurePrize, claimPrize } = require('./northpole');
 
 const route = require('../route/route.json');
 const store = new Store(config.dataDir, config.timeZone);
+if (ensurePrize(store.data, config)) store.save();
+console.log(
+  `North Pole prize: code ${store.data.northPole.code}, ` +
+    (store.data.northPole.claimedAt ? `found ${store.data.northPole.claimedAt}` : 'not found yet'),
+);
 
 let refreshing = null;
 let lastManualRefresh = 0;
@@ -95,6 +101,16 @@ app.post('/api/refresh', async (req, res) => {
   lastManualRefresh = Date.now();
   await Promise.all([refresh(), Date.now() - lastImages > 60 * 1000 ? refreshImages() : null]);
   res.json(computeState(store.data, route, config));
+});
+
+// The hidden North Pole prize: the first click gets the code.
+app.post('/api/north-pole', (req, res) => {
+  const result = claimPrize(store.data, config);
+  if (result.found) {
+    store.save();
+    console.log(`North Pole prize found at ${store.data.northPole.claimedAt} (code ${result.code})`);
+  }
+  res.set('Cache-Control', 'no-store').json(result);
 });
 
 app.get('/healthz', (req, res) => res.send('ok'));
