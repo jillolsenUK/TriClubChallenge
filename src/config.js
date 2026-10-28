@@ -28,18 +28,19 @@ module.exports = {
   refreshMinutes: num(env.REFRESH_MINUTES, 15),
   adminKey: env.ADMIN_KEY || '',
   // Hidden map prizes. Each spot's code comes from its environment variable
-  // (a random one if not set; codes are printed in the log). PRIZE_KM is what
-  // each is worth.
+  // (a random one if not set; codes are printed in the log). The finder can use
+  // the km as a charm for their team or a hex on another team. Each spot's km
+  // can be changed with e.g. GIRONA_KM; PRIZE_KM sets the rest.
   prizes: [
     { id: 'north-pole', name: 'the North Pole', lat: 84.6, lon: 0, env: 'NORTH_POLE_CODE', prefix: 'POLE' },
     { id: 'hyde-park-sydney', name: 'Hyde Park… in Sydney', lat: -33.8732, lon: 151.2111, env: 'SYDNEY_CODE', prefix: 'SYD' },
     { id: 'tenerife', name: 'Mount Teide, Tenerife', lat: 28.2724, lon: -16.6425, env: 'TENERIFE_CODE', prefix: 'TEIDE' },
-    { id: 'girona', name: 'Girona', lat: 41.9866, lon: 2.8243, env: 'GIRONA_CODE', prefix: 'GIRONA' },
-  ].map(({ env: codeVar, ...spot }) => ({
+    { id: 'girona', name: 'Girona', lat: 41.9866, lon: 2.8243, env: 'GIRONA_CODE', prefix: 'GIRONA', km: 100 },
+  ].map(({ env: codeVar, km, ...spot }) => ({
     ...spot,
     code: (env[codeVar] || '').trim(),
     codeVar,
-    km: num(env.PRIZE_KM, num(env.NORTH_POLE_KM, 50)),
+    km: num(env[codeVar.replace(/_CODE$/, '_KM')], km ?? num(env.PRIZE_KM, 50)),
   })),
   // Weeks run Sunday to Saturday in this time zone (the sheet's weekly
   // columns are zeroed on Sunday).

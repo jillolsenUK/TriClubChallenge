@@ -161,7 +161,8 @@
   }
   const foundText = (spot, code, km) =>
     '<strong>🎉 You found the secret snowflake at ' + esc(spot.name) + '!</strong><br>Your prize code is<div class="np-code">' + esc(code) + '</div>' +
-    'Send it to the challenge organiser to claim <strong>' + km + ' km</strong> for your team. Only the first finder gets it, so keep it secret!';
+    'Send it to the challenge organiser to claim <strong>' + km + ' km</strong>: either as a ✨ <strong>charm</strong> for your team, ' +
+    'or as a 🧙 <strong>hex</strong> taking ' + km + ' km off another team. Only the first finder gets it, so keep it secret!';
 
   function updateMarkers() {
     const seen = new Set();

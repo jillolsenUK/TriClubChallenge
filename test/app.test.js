@@ -351,3 +351,8 @@ test('each hidden prize goes to its first finder only, and a new code starts a n
   assert.ok(!JSON.stringify(publicSpots(spots)).includes('JINGLE'));
   assert.ok(!JSON.stringify(computeState({ teams: {}, weeks: {}, prizes: data.prizes }, route, config)).includes(girona.code));
 });
+
+test('hidden prizes are worth 50 km, and Girona 100 km', () => {
+  const kms = Object.fromEntries(require('../src/config').prizes.map((p) => [p.id, p.km]));
+  assert.deepStrictEqual(kms, { 'north-pole': 50, 'hyde-park-sydney': 50, tenerife: 50, girona: 100 });
+});

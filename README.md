@@ -54,9 +54,10 @@ Faint ❄ snowflakes are hidden on the map at **the North Pole** (as far north a
 **Hyde Park in Sydney** (a twist on the London start), **Mount Teide in Tenerife** and **Girona**. They're bright
 twinkling blue snowflakes, shown at the normal map view and closer (hidden only when zoomed right out to the whole
 world), so finding them means exploring the map. The **first** person to click each one gets that spot's
-prize code, worth `PRIZE_KM` (50) km. Anyone after that is told someone got there first, and the finder sees their code
-again if they click again in the same browser. They send the code to the organiser, who adds the km as a Charm for
-their team.
+prize code, worth 50 km (Girona: 100 km). The finder chooses how to use it: as a **charm**, adding the km to their own
+team, or as a **hex**, taking the km off another team. Anyone after that is told someone got there first, and the finder sees their code
+again if they click again in the same browser. They send the code and their choice to the organiser, who adds the km to
+the Charm columns of their team, or to the Hex columns of the team they picked.
 
 Codes are never in the page; only the server knows them. Set each spot's code in the Azure environment variables:
 `NORTH_POLE_CODE`, `SYDNEY_CODE`, `TENERIFE_CODE`, `GIRONA_CODE`. Without one, a random code (e.g. `TEIDE-Y6JT58`) is
@@ -92,7 +93,8 @@ npm test
 | `IMAGES_REFRESH_MINUTES` | `60` | How often to re-read the team pictures |
 | `IMAGES_XLSX_URL` | – | Use any `.xlsx` URL for the team pictures instead |
 | `NORTH_POLE_CODE`, `SYDNEY_CODE`, `TENERIFE_CODE`, `GIRONA_CODE` | random, shown in the log | Each hidden prize's code; a new value starts a new hunt there |
-| `PRIZE_KM` | `50` | km each hidden prize is worth (shown to the finder) |
+| `PRIZE_KM` | `50` | km each hidden prize is worth (shown to the finder), apart from Girona |
+| `NORTH_POLE_KM`, `SYDNEY_KM`, `TENERIFE_KM`, `GIRONA_KM` | `50`, `50`, `50`, `100` | km for one spot's prize |
 | `ADMIN_KEY` | – | If set, the Refresh button asks for this key |
 | `DATA_DIR` | `./data` (`/home/data` on Azure) | Where `store.json` is kept |
 
