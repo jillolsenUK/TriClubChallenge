@@ -311,6 +311,8 @@ test('team pictures are read from the Images tab and matched to the header above
   const saved = await saveThumbnails(pictures, dir);
   const meta = await sharp(path.join(dir, saved.sleighingitinlycra.file)).metadata();
   assert.deepStrictEqual([meta.format, meta.width, meta.height], ['webp', 128, 128]);
+  const large = await sharp(path.join(dir, saved.sleighingitinlycra.large)).metadata();
+  assert.deepStrictEqual([large.width, large.height], [480, 480]);
 
   // Teams with a picture get it (matched by name); the rest keep their emoji markers.
   const data = {

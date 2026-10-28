@@ -176,9 +176,13 @@
     }
     const s = styleFor(t);
     const stat = (label, value) => '<div class="stat"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
-    let html = '<div class="detail-head">' + teamIcon(t, 40) + '<div><h2>' + esc(t.name) + '</h2>' +
-      '<div class="muted" style="font-size:.8rem">' + (t.image ? 'Team picture' : esc(s.shape.name) + ' marker') +
-      (formerNames(t).length ? ' · formerly ' + formerNames(t).map(esc).join(', ') : '') + '</div></div></div>';
+    const former = formerNames(t).length ? 'formerly ' + formerNames(t).map(esc).join(', ') : '';
+    // Teams with a picture get it shown large; the rest keep the small emoji badge beside the name.
+    let html = t.image
+      ? '<div class="detail-hero"><img src="' + esc(t.imageLarge || t.image) + '" alt="' + esc(t.name) + ' team picture" style="border-color:' + s.color + '">' +
+        '<h2>' + esc(t.name) + '</h2>' + (former ? '<div class="muted" style="font-size:.8rem">' + former + '</div>' : '') + '</div>'
+      : '<div class="detail-head">' + teamIcon(t, 40) + '<div><h2>' + esc(t.name) + '</h2>' +
+        '<div class="muted" style="font-size:.8rem">' + esc(s.shape.name) + ' marker' + (former ? ' · ' + former : '') + '</div></div></div>';
     html += '<div class="bar" style="height:10px"><span style="width:' + (t.progress * 100).toFixed(2) + '%;background:' + s.color + '"></span></div>';
     html += '<div class="stats">' +
       stat('Position', '#' + t.rank + ' of ' + state.teams.length) +

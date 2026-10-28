@@ -11,7 +11,8 @@ const sharp = require('sharp');
 const config = require('./config');
 
 const MAX_DOWNLOAD = 100 * 1024 * 1024;
-const THUMB_PX = 128;
+// A small copy for map and leaderboard markers, and a large one for the Team pane.
+const SIZES = { file: { px: 128, suffix: '' }, large: { px: 480, suffix: '-lg' } };
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const unescapeXml = (s) =>
@@ -104,28 +105,29 @@ async function fetchWorkbook() {
   return buf;
 }
 
-// Saves a small square copy of each team's picture in dir and returns
-// { [normalised team name]: { file, name } }. Files are named by a hash of the
-// original, so unchanged pictures aren't redone and browsers can cache them.
+// Saves small and large square copies of each team's picture in dir and returns
+// { [normalised team name]: { file, large, name } }. Files are named by a hash of
+// the original, so unchanged pictures aren't redone and browsers can cache them.
 async function saveThumbnails(pictures, dir) {
   fs.mkdirSync(dir, { recursive: true });
   const out = {};
   for (const { name, image } of pictures) {
     const hash = crypto.createHash('sha1').update(image).digest('hex').slice(0, 16);
-    const file = `${hash}.webp`;
-    const target = path.join(dir, file);
-    if (!fs.existsSync(target)) {
-      try {
-        await sharp(image).rotate().resize(THUMB_PX, THUMB_PX, { fit: 'cover' }).webp({ quality: 82 }).toFile(target);
-      } catch (err) {
-        console.warn(`Couldn't read the picture for ${name}: ${err.message}`);
-        continue;
+    const entry = { name };
+    try {
+      for (const [key, { px, suffix }] of Object.entries(SIZES)) {
+        entry[key] = `${hash}${suffix}.webp`;
+        const target = path.join(dir, entry[key]);
+        if (!fs.existsSync(target)) await sharp(image).rotate().resize(px, px, { fit: 'cover' }).webp({ quality: 82 }).toFile(target);
       }
+    } catch (err) {
+      console.warn(`Couldn't read the picture for ${name}: ${err.message}`);
+      continue;
     }
-    out[norm(name)] = { file, name };
+    out[norm(name)] = entry;
   }
   // Remove pictures that are no longer used.
-  const keep = new Set(Object.values(out).map((v) => v.file));
+  const keep = new Set(Object.values(out).flatMap((v) => [v.file, v.large]));
   for (const f of fs.readdirSync(dir)) if (f.endsWith('.webp') && !keep.has(f)) fs.rmSync(path.join(dir, f), { force: true });
   return out;
 }

@@ -81,6 +81,7 @@ function computeState(data, route, config) {
       styleIndex: t.styleIndex,
       // The team's picture from the Images tab, matched by its current name.
       image: data.images?.[normName(t.name)] ? 'team-images/' + data.images[normName(t.name)].file : null,
+      imageLarge: data.images?.[normName(t.name)]?.large ? 'team-images/' + data.images[normName(t.name)].large : null,
       totals,
       thisWeek,
       weekly,
