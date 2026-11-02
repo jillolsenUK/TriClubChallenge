@@ -1,7 +1,7 @@
-// Hidden prizes on the map: faint snowflakes in a few far-flung spots. The
-// first person to click each one gets that spot's code, worth extra km, which
-// they give to the organiser. Codes never appear in the page; the server only
-// hands each one to its first finder.
+// Hidden prizes on the map: small snowflakes in a few far-flung spots. The
+// first person (or first few, see `winners`) to click each one gets a code,
+// worth extra km, which they give to the organiser. Codes never appear in the
+// page; the server only hands them to the finders.
 
 const crypto = require('crypto');
 
@@ -23,28 +23,49 @@ function ensurePrizes(data, spots) {
   for (const spot of spots) {
     const prize = data.prizes[spot.id];
     if (!prize || (spot.code && prize.code !== spot.code)) {
-      data.prizes[spot.id] = { code: spot.code || randomCode(spot.prefix), claimedAt: null };
+      data.prizes[spot.id] = { code: spot.code || randomCode(spot.prefix), claimedAt: null, claims: [] };
       changed = true;
     }
   }
   return changed;
 }
 
-// The first call for a spot wins its code; later calls are told it's gone.
-// `remembered` is the code the caller's browser was given before: if it's still
-// this spot's code, that's the finder coming back, so they see it again.
+// The first `spot.winners` callers for a spot each win a code: the spot's code
+// itself when there's one winner, otherwise the code with the finder's number
+// (e.g. "NorthPole50-LetsGo-2"), so the organiser can tell winners apart.
+// Later callers are told they've all gone. `remembered` is the code the
+// caller's browser was given before: if it's one of this spot's current codes,
+// that's a finder coming back, so they see it again.
 function claimPrize(data, spots, id, now = new Date(), remembered = '') {
   const spot = spots.find((s) => s.id === id);
   if (!spot) return null;
   ensurePrizes(data, spots);
   const prize = data.prizes[id];
-  if (prize.claimedAt && remembered && remembered === prize.code) return { found: true, code: prize.code, km: spot.km, again: true };
-  if (prize.claimedAt) return { found: false, claimedAt: prize.claimedAt, km: spot.km };
-  prize.claimedAt = now.toISOString();
-  return { found: true, code: prize.code, km: spot.km };
+  const winners = spot.winners || 1;
+  // Prizes saved before there could be several winners only recorded claimedAt.
+  if (!prize.claims) prize.claims = prize.claimedAt ? [{ code: prize.code, at: prize.claimedAt }] : [];
+  const reply = (claim, again) => ({
+    found: true,
+    code: claim.code,
+    km: spot.km,
+    finder: prize.claims.indexOf(claim) + 1,
+    winners,
+    ...(again ? { again: true } : {}),
+  });
+
+  const mine = remembered && prize.claims.find((c) => c.code === remembered);
+  if (mine) return reply(mine, true);
+  if (prize.claims.length >= winners) {
+    return { found: false, claimedAt: prize.claims[prize.claims.length - 1].at, km: spot.km, winners };
+  }
+  const n = prize.claims.length + 1;
+  const claim = { code: winners === 1 ? prize.code : `${prize.code}-${n}`, at: now.toISOString() };
+  prize.claims.push(claim);
+  prize.claimedAt = prize.claimedAt || claim.at;
+  return reply(claim);
 }
 
 // What the page needs to place the snowflakes: never the codes.
-const publicSpots = (spots) => spots.map(({ id, name, lat, lon, km, zoom }) => ({ id, name, lat, lon, km, zoom }));
+const publicSpots = (spots) => spots.map(({ id, name, lat, lon, km, zoom, winners }) => ({ id, name, lat, lon, km, zoom, winners }));
 
 module.exports = { ensurePrizes, claimPrize, publicSpots };

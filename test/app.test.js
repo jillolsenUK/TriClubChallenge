@@ -336,9 +336,9 @@ test('each hidden prize goes to its first finder only, and a new code starts a n
   ];
   // The single prize saved before there were several spots carries over, found or not.
   const data = { northPole: { code: 'JINGLE-50', claimedAt: null } };
-  assert.deepStrictEqual(claimPrize(data, spots, 'north-pole', new Date('2026-11-05T10:00:00Z')), { found: true, code: 'JINGLE-50', km: 50 });
+  assert.deepStrictEqual(claimPrize(data, spots, 'north-pole', new Date('2026-11-05T10:00:00Z')), { found: true, code: 'JINGLE-50', km: 50, finder: 1, winners: 1 });
   assert.strictEqual(data.northPole, undefined);
-  assert.deepStrictEqual(claimPrize(data, spots, 'north-pole'), { found: false, claimedAt: '2026-11-05T10:00:00.000Z', km: 50 });
+  assert.deepStrictEqual(claimPrize(data, spots, 'north-pole'), { found: false, claimedAt: '2026-11-05T10:00:00.000Z', km: 50, winners: 1 });
   // Another spot is separate; without a configured code it gets a random one, kept between restarts.
   const girona = claimPrize(data, spots, 'girona');
   assert.ok(girona.found);
@@ -346,7 +346,7 @@ test('each hidden prize goes to its first finder only, and a new code starts a n
   assert.strictEqual(ensurePrizes(data, spots), false);
   assert.strictEqual(claimPrize(data, spots, 'nowhere'), null);
   // The finder's browser sends back its code and sees it again; a wrong code doesn't.
-  assert.deepStrictEqual(claimPrize(data, spots, 'north-pole', new Date(), 'JINGLE-50'), { found: true, code: 'JINGLE-50', km: 50, again: true });
+  assert.deepStrictEqual(claimPrize(data, spots, 'north-pole', new Date(), 'JINGLE-50'), { found: true, code: 'JINGLE-50', km: 50, finder: 1, winners: 1, again: true });
   assert.strictEqual(claimPrize(data, spots, 'north-pole', new Date(), 'GUESS').found, false);
   // A new code re-hides that spot's prize, and the old code no longer counts.
   const reset = [{ ...spots[0], code: 'ELF-77' }];
@@ -360,7 +360,7 @@ test('each hidden prize goes to its first finder only, and a new code starts a n
 // Reads the prize settings in a fresh process with the given environment variables.
 const prizeSettings = (env) =>
   JSON.parse(
-    require('child_process').execFileSync(process.execPath, ['-e', "console.log(JSON.stringify(require('./src/config').prizes.map(({ id, km, zoom }) => ({ id, km, zoom }))))"], {
+    require('child_process').execFileSync(process.execPath, ['-e', "console.log(JSON.stringify(require('./src/config').prizes.map(({ id, km, zoom, winners }) => ({ id, km, zoom, winners }))))"], {
       cwd: path.join(__dirname, '..'),
       env: { PATH: process.env.PATH, ...env },
     }),
@@ -368,16 +368,16 @@ const prizeSettings = (env) =>
 
 test('hidden prizes: 50 km each (Girona 100), appear at zoom 6, and each can be turned off or tuned', () => {
   assert.deepStrictEqual(prizeSettings({}), [
-    { id: 'north-pole', km: 50, zoom: 6 },
-    { id: 'hyde-park-sydney', km: 50, zoom: 6 },
-    { id: 'tenerife', km: 50, zoom: 6 },
-    { id: 'girona', km: 100, zoom: 6 },
+    { id: 'north-pole', km: 50, zoom: 6, winners: 1 },
+    { id: 'hyde-park-sydney', km: 50, zoom: 6, winners: 1 },
+    { id: 'tenerife', km: 50, zoom: 6, winners: 1 },
+    { id: 'girona', km: 100, zoom: 6, winners: 1 },
   ]);
   assert.deepStrictEqual(
-    prizeSettings({ SYDNEY_ENABLED: 'false', TENERIFE_ENABLED: 'Off', NORTH_POLE_ENABLED: 'true', PRIZE_ZOOM: '7', GIRONA_ZOOM: '9', GIRONA_KM: '150' }),
+    prizeSettings({ SYDNEY_ENABLED: 'false', TENERIFE_ENABLED: 'Off', NORTH_POLE_ENABLED: 'true', PRIZE_ZOOM: '7', GIRONA_ZOOM: '9', GIRONA_KM: '150', PRIZE_WINNERS: '2', GIRONA_WINNERS: '5' }),
     [
-      { id: 'north-pole', km: 50, zoom: 7 },
-      { id: 'girona', km: 150, zoom: 9 },
+      { id: 'north-pole', km: 50, zoom: 7, winners: 2 },
+      { id: 'girona', km: 150, zoom: 9, winners: 5 },
     ],
   );
 });
@@ -404,4 +404,32 @@ test('Present and Prank columns are read the same as Charm and Hex', () => {
   assert.notStrictEqual(csv, DATA_TAB);
   const [t] = extractTeams(parseCsv(csv)).teams;
   assert.deepStrictEqual([t.total.charm, t.total.hex, t.weekly.charm, t.weekly.hex], [40, 25, 20, 5]);
+});
+
+test('a prize can have several winners, each with their own numbered code', () => {
+  const spots = [{ id: 'girona', name: 'Girona', code: 'TriCamp2027', prefix: 'GIRONA', km: 100, winners: 3 }];
+  const data = {};
+  const at = (h) => new Date(`2026-11-05T${h}:00:00Z`);
+  const a = claimPrize(data, spots, 'girona', at('10'));
+  const b = claimPrize(data, spots, 'girona', at('11'));
+  const c = claimPrize(data, spots, 'girona', at('12'));
+  assert.deepStrictEqual([a, b, c].map((r) => [r.code, r.finder, r.winners]), [
+    ['TriCamp2027-1', 1, 3],
+    ['TriCamp2027-2', 2, 3],
+    ['TriCamp2027-3', 3, 3],
+  ]);
+  // The fourth is too late; earlier finders still see their own code.
+  assert.deepStrictEqual(claimPrize(data, spots, 'girona', at('13')), { found: false, claimedAt: '2026-11-05T12:00:00.000Z', km: 100, winners: 3 });
+  assert.deepStrictEqual(claimPrize(data, spots, 'girona', at('14'), 'TriCamp2027-2'), { ...b, again: true });
+  // Raising the number of winners lets more people find it; a new code starts again.
+  assert.strictEqual(claimPrize(data, [{ ...spots[0], winners: 4 }], 'girona').code, 'TriCamp2027-4');
+  assert.strictEqual(claimPrize(data, [{ ...spots[0], code: 'Gaudi', winners: 2 }], 'girona').code, 'Gaudi-1');
+});
+
+test('a prize found before several winners were possible still counts as found once', () => {
+  const data = { prizes: { 'north-pole': { code: 'POLE', claimedAt: '2026-11-01T09:00:00.000Z' } } };
+  const spots = [{ id: 'north-pole', code: 'POLE', km: 50, winners: 2 }];
+  assert.deepStrictEqual(claimPrize(data, spots, 'north-pole', new Date(), 'POLE'), { found: true, code: 'POLE', km: 50, finder: 1, winners: 2, again: true });
+  assert.strictEqual(claimPrize(data, spots, 'north-pole').code, 'POLE-2');
+  assert.strictEqual(claimPrize(data, spots, 'north-pole').found, false);
 });

@@ -51,6 +51,8 @@ module.exports = {
         // Map zoom at which the snowflake appears: 3 is the normal view on a phone,
         // 4 on a desktop; 6 means zooming right in on the right part of the map.
         zoom: num(setting('ZOOM'), num(env.PRIZE_ZOOM, 6)),
+        // How many finders (groups) can win this prize. Each gets their own code.
+        winners: Math.max(1, Math.floor(num(setting('WINNERS'), num(env.PRIZE_WINNERS, 1)))),
       };
     }),
   // Weeks run Sunday to Saturday in this time zone (the sheet's weekly

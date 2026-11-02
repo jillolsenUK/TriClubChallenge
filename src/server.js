@@ -16,9 +16,11 @@ const store = new Store(config.dataDir, config.timeZone);
 if (ensurePrizes(store.data, config.prizes)) store.save();
 for (const spot of config.prizes) {
   const prize = store.data.prizes[spot.id];
+  const claims = prize.claims || (prize.claimedAt ? [{ code: prize.code, at: prize.claimedAt }] : []);
   console.log(
     `Hidden prize at ${spot.name}: code ${prize.code} (${spot.codeVar}), ${spot.km} km, appears at zoom ${spot.zoom}, ` +
-      (prize.claimedAt ? 'found ' + prize.claimedAt : 'not found yet'),
+      `found ${claims.length} of ${spot.winners} time${spot.winners === 1 ? '' : 's'}` +
+      claims.map((c) => ` [${c.code} at ${c.at}]`).join(''),
   );
 }
 for (const spot of config.allPrizes.filter((s) => !s.enabled)) console.log(`Hidden prize at ${spot.name}: turned off`);
@@ -121,7 +123,7 @@ app.post('/api/prizes/:id', express.json({ limit: '1kb' }), (req, res) => {
   if (!result) return res.status(404).json({ error: 'No prize hidden there' });
   if (result.found && !result.again) {
     store.save();
-    console.log(`Hidden prize at ${req.params.id} found at ${store.data.prizes[req.params.id].claimedAt} (code ${result.code})`);
+    console.log(`Hidden prize at ${req.params.id}: finder ${result.finder} of ${result.winners}, code ${result.code}, at ${new Date().toISOString()}`);
   }
   res.set('Cache-Control', 'no-store').json(result);
 });

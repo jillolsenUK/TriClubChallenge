@@ -161,9 +161,14 @@
           if (res.found) {
             mine = { code: res.code, km: res.km };
             remember(spot.id, mine);
-            show(foundText(spot, res.code, res.km));
+            show(foundText(spot, res.code, res.km, res.finder, res.winners));
           } else {
-            show('<strong>🎅 Ho ho ho!</strong><br>You found the secret snowflake at ' + esc(spot.name) + ', but someone got here first and claimed the prize.');
+            show(
+              '<strong>🎅 Ho ho ho!</strong><br>You found the secret snowflake at ' + esc(spot.name) + ', but ' +
+                (res.winners > 1
+                  ? (res.winners === 2 ? 'both prizes' : 'all ' + res.winners + ' prizes') + ' here have already been claimed.'
+                  : 'someone got here first and claimed the prize.'),
+            );
           }
         } catch (e) {
           show('This snowflake is frozen solid. Try again in a moment.');
@@ -172,10 +177,13 @@
     }
     toggle();
   }
-  const foundText = (spot, code, km) =>
-    '<strong>🎉 You found the secret snowflake at ' + esc(spot.name) + '!</strong><br>Your prize code is<div class="np-code">' + esc(code) + '</div>' +
+  const foundText = (spot, code, km, finder, winners) =>
+    '<strong>🎉 You found the secret snowflake at ' + esc(spot.name) + '!</strong><br>' +
+    (winners > 1 && finder ? "You're finder " + finder + ' of ' + winners + '. ' : '') +
+    'Your prize code is<div class="np-code">' + esc(code) + '</div>' +
     'Send it to the challenge organiser to claim <strong>' + km + ' km</strong>: either as a 🎁 <strong>present</strong> for your team, ' +
-    'or as a 😈 <strong>prank</strong> taking ' + km + ' km off another team. Only the first finder gets it, so keep it secret!';
+    'or as a 😈 <strong>prank</strong> taking ' + km + ' km off another team. ' +
+    (winners > 1 ? 'Only the first ' + winners + ' finders get one' : 'Only the first finder gets it') + ', so keep it secret!';
 
   function updateMarkers() {
     const seen = new Set();
