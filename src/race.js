@@ -111,6 +111,7 @@ function computeState(data, route, config) {
     teams,
     validation: { checked: teams.reduce((n, t) => n + t.checks.length, 0), mismatches },
     message: data.message || '',
+    visits: config.showVisitCounter ? data.visits?.total || 0 : null,
     lastFetch: data.lastFetch,
     lastError: data.lastError,
   };

@@ -29,6 +29,8 @@ module.exports = {
   dataDir: env.DATA_DIR || (env.WEBSITE_SITE_NAME ? '/home/data' : path.join(__dirname, '..', 'data')),
   refreshMinutes: num(env.REFRESH_MINUTES, 15),
   adminKey: env.ADMIN_KEY || '',
+  // Show the site-visit count at the bottom of the page (it's always at /api/visits).
+  showVisitCounter: /^(true|1|yes|on)$/i.test(String(env.SHOW_VISIT_COUNTER || '').trim()),
   // Hidden map prizes. Each spot's code comes from its environment variable
   // (a random one if not set; codes are printed in the log). The finder can use
   // the km as a charm for their team or a hex on another team. Per spot (e.g. for

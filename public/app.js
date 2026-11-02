@@ -375,8 +375,15 @@
     }
   }
 
+  function renderVisits() {
+    const el = $('visit-counter');
+    el.hidden = state.visits == null;
+    if (state.visits != null) el.textContent = '🎄 ' + state.visits.toLocaleString() + ' visits to the site so far';
+  }
+
   function render() {
     renderMessage();
+    renderVisits();
     updateMarkers();
     renderLeaderboard();
     renderTeamSelect();

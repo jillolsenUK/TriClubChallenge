@@ -7,6 +7,7 @@ const { fetchTeams, fetchMessage } = require('./sheet');
 const { computeState } = require('./race');
 const { fetchWorkbook, extractTeamImages, saveThumbnails } = require('./images');
 const { ensurePrizes, claimPrize, publicSpots } = require('./prizes');
+const { isVisit, countVisit, visitSummary } = require('./visits');
 
 // Log anything unexpected rather than letting a background task stop the app.
 process.on('unhandledRejection', (err) => console.error('Unexpected error (the app keeps running):', err));
@@ -85,7 +86,25 @@ const version = Date.now().toString(36);
 const indexHtml = fs
   .readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
   .replace(/__VERSION__/g, version);
-const sendIndex = (req, res) => res.set('Cache-Control', 'no-cache').type('html').send(indexHtml);
+// Opening the page counts as a visit. Counts are saved with the next data save,
+// or within a minute, rather than writing the file on every visit.
+let visitsUnsaved = false;
+const sendIndex = (req, res) => {
+  if (isVisit(req)) {
+    countVisit(store.data, new Date(), config.timeZone);
+    visitsUnsaved = true;
+  }
+  res.set('Cache-Control', 'no-cache').type('html').send(indexHtml);
+};
+setInterval(() => {
+  if (!visitsUnsaved) return;
+  visitsUnsaved = false;
+  try {
+    store.save();
+  } catch (err) {
+    console.error('Saving visit count failed:', err.message);
+  }
+}, 60 * 1000).unref();
 
 const app = express();
 app.get(['/', '/index.html'], sendIndex);
@@ -128,10 +147,15 @@ app.post('/api/prizes/:id', express.json({ limit: '1kb' }), (req, res) => {
   res.set('Cache-Control', 'no-store').json(result);
 });
 
+// Site visits: totals only.
+app.get('/api/visits', (req, res) => res.set('Cache-Control', 'no-store').json(visitSummary(store.data, new Date(), config.timeZone)));
+
 app.get('/healthz', (req, res) => res.send('ok'));
 
 app.listen(config.port, () => {
   console.log(`TriClub Challenge on port ${config.port}, data in ${config.dataDir}`);
+  const visits = visitSummary(store.data, new Date(), config.timeZone);
+  console.log(`Site visits: ${visits.total} in total, ${visits.today} today`);
   // REFRESH_MINUTES=0 only shows what's saved (e.g. a simulation's store.json).
   if (config.refreshMinutes > 0) {
     refresh();

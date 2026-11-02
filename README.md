@@ -67,6 +67,16 @@ hides a fresh prize there (restart the web app if it doesn't take effect). That'
 testing: use throwaway codes like `TEST-1`, `TEST-2`, then set the real codes before launch. A finder's browser only
 shows its remembered code while it's still that spot's current code.
 
+## Site visits
+
+Each time someone opens the site, a counter goes up: a running total and one number per day (UK dates). Nothing about the
+visitor is stored or used beyond that moment (no IP address, cookies, browser details or anything kept on their
+device), so it counts visits, not people. Azure's Always On pings, health checks, search-engine bots and link prefetches
+aren't counted, and neither is the page's own refresh every minute.
+
+See the numbers at `/api/visits` (total, today, and the last 30 days); the startup log also prints them. Set
+`SHOW_VISIT_COUNTER=true` to show the total at the bottom of the page.
+
 ## Run locally
 
 ```bash
@@ -103,6 +113,7 @@ npm test
 | `NORTH_POLE_ENABLED`, `SYDNEY_ENABLED`, `TENERIFE_ENABLED`, `GIRONA_ENABLED` | `true` | `false` hides that spot's snowflake and stops it being claimed |
 | `PRIZE_ZOOM` | `6` | How far you must zoom in before the snowflakes appear (higher = harder) |
 | `NORTH_POLE_ZOOM`, `SYDNEY_ZOOM`, `TENERIFE_ZOOM`, `GIRONA_ZOOM` | `PRIZE_ZOOM` | The same, for one spot |
+| `SHOW_VISIT_COUNTER` | `false` | Show the number of site visits at the bottom of the page |
 | `ADMIN_KEY` | – | If set, the Refresh button asks for this key |
 | `DATA_DIR` | `./data` (`/home/data` on Azure) | Where `store.json` is kept |
 

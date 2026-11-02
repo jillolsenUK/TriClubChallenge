@@ -148,6 +148,8 @@ button:hover { border-color: var(--accent); }
 }
 
 .layout { flex: 1; display: flex; min-height: 0; }
+.visit-counter { flex: none; padding: 4px 16px; font-size: 0.75rem; text-align: center; color: var(--muted); background: var(--surface); border-top: 1px solid var(--border); }
+.visit-counter[hidden] { display: none; }
 .map-hint {
   position: absolute;
   inset: 0;

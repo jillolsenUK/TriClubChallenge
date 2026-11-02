@@ -9,6 +9,7 @@
 //   message: the banner text from the sheet's Message tab
 //   images: { [normalised team name]: { file, large, name } } pictures from the Images tab
 //   prizes: { [spot id]: { code, claimedAt, claims: [{ code, at }] } } the hidden map prizes
+//   visits: { total, days: { [YYYY-MM-DD]: count } } site visits (counts only, nothing about visitors)
 //   lastFetch, lastError
 // `weekly`/`total` hold the raw sheet values; km are worked out in race.js.
 

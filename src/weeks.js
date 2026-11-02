@@ -25,6 +25,9 @@ function previousWeek(weekKey) {
 
 const isSunday = (date, timeZone) => localDay(date, timeZone).weekday === 0;
 
+// The calendar date (YYYY-MM-DD) of `date` in `timeZone`.
+const localDate = (date, timeZone) => new Date(localDay(date, timeZone).utcDate).toISOString().slice(0, 10);
+
 const isWeekKey = (key) => /^\d{4}-\d{2}-\d{2}$/.test(key) && !isNaN(Date.parse(key + 'T00:00:00Z'));
 
 // The week's dates, e.g. "22–28 Nov" or "29 Nov – 5 Dec", with "Week 4 · "
@@ -49,4 +52,4 @@ function weekNumber(weekKey, challengeStart, timeZone) {
   return Math.round((Date.parse(weekKey) - Date.parse(first)) / (7 * DAY_MS)) + 1;
 }
 
-module.exports = { weekStart, previousWeek, isSunday, weekLabel, weekNumber, isWeekKey };
+module.exports = { weekStart, previousWeek, isSunday, localDate, weekLabel, weekNumber, isWeekKey };

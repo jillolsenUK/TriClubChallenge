@@ -433,3 +433,34 @@ test('a prize found before several winners were possible still counts as found o
   assert.strictEqual(claimPrize(data, spots, 'north-pole').code, 'POLE-2');
   assert.strictEqual(claimPrize(data, spots, 'north-pole').found, false);
 });
+
+test('the visit counter keeps only counts, and skips Azure pings, bots and prefetches', () => {
+  const { isVisit, countVisit, visitSummary } = require('../src/visits');
+  const req = (ua, accept = 'text/html,application/xhtml+xml', extra = {}) => ({
+    method: 'GET',
+    get: (h) => ({ 'user-agent': ua, accept, ...extra })[h.toLowerCase()],
+  });
+  const browser = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1';
+  assert.strictEqual(isVisit(req(browser)), true);
+  assert.strictEqual(isVisit(req('AlwaysOn')), false);
+  assert.strictEqual(isVisit(req('Mozilla/5.0 (compatible; Googlebot/2.1)')), false);
+  assert.strictEqual(isVisit(req(browser, '*/*')), false);
+  assert.strictEqual(isVisit(req(browser, 'text/html', { 'sec-purpose': 'prefetch' })), false);
+
+  const data = {};
+  const tz = 'Europe/London';
+  countVisit(data, new Date('2026-11-01T23:30:00Z'), tz); // 23:30 Sunday in London (GMT)
+  countVisit(data, new Date('2026-11-02T00:30:00Z'), tz);
+  countVisit(data, new Date('2026-11-02T09:00:00Z'), tz);
+  assert.deepStrictEqual(data.visits, { total: 3, days: { '2026-11-01': 1, '2026-11-02': 2 } });
+  assert.deepStrictEqual(visitSummary(data, new Date('2026-11-02T12:00:00Z'), tz), {
+    total: 3,
+    today: 2,
+    days: { '2026-11-02': 2, '2026-11-01': 1 },
+  });
+  // Only numbers are stored.
+  assert.ok(!JSON.stringify(data).includes('iPhone'));
+  // The page only gets the total, and only when SHOW_VISIT_COUNTER is on.
+  assert.strictEqual(computeState({ teams: {}, weeks: {}, ...data }, route, config).visits, null);
+  assert.strictEqual(computeState({ teams: {}, weeks: {}, ...data }, route, { ...config, showVisitCounter: true }).visits, 3);
+});
